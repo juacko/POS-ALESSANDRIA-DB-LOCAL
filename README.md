@@ -105,6 +105,7 @@ Al iniciar por primera vez, SQLite genera automáticamente los siguientes usuari
 En la carpeta `scripts/` dispones de herramientas de automatización con 1 clic:
 
 1. **`scripts/abrir-firewall-puerto-3000.bat`**: Ejecútalo como Administrador una sola vez para permitir que los teléfonos en la red Wi-Fi de la heladería se conecten a la comandera sin bloqueos de firewall.
-2. **`scripts/iniciar-pos.bat`**: Hace `git pull` automático de tus últimos cambios de GitHub y arranca la aplicación. Puedes crear un acceso directo a este archivo en el Escritorio.
-3. **`scripts/subir-cambios-a-github.bat`**: Si realizas cambios en el código o configuración directamente desde la heladería, haz doble clic en este archivo para empaquetar y subir los cambios a GitHub, permitiéndote continuar trabajando en tu laptop sin fricciones.
+2. **`scripts/actualizar-pos.bat`**: Hace `git pull`, instala dependencias nuevas si las hay (`npm install --ignore-scripts`), reconstruye `better-sqlite3` para Electron y verifica tipos. Ideal para cuando mandes actualizaciones desde tu otra computadora.
+3. **`scripts/iniciar-pos.bat`**: Hace una comprobación rápida de actualizaciones y arranca la aplicación. Puedes crear un acceso directo a este archivo en el Escritorio de la heladería.
+4. **`scripts/subir-cambios-a-github.bat`**: Si realizas cambios en el código o configuración directamente desde la heladería, haz doble clic en este archivo para empaquetar y subir los cambios a GitHub, permitiéndote continuar trabajando en tu laptop o PC de desarrollo sin fricciones.
 
