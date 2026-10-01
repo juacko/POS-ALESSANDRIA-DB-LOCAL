@@ -39,7 +39,12 @@
                 @change="toggleModifier(group, mod)"
                 class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
               />
-              <span class="text-sm font-semibold text-slate-800">{{ mod.name }}</span>
+              <span class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                <span>{{ mod.name }}</span>
+                <span v-if="mod.is_default === 1" class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded border border-amber-200" title="Opción predeterminada">
+                  📌
+                </span>
+              </span>
             </div>
 
             <span v-if="mod.price_adjustment > 0" class="text-xs font-bold text-indigo-600">
@@ -81,6 +86,37 @@ const selectedModifiers = ref<SelectedModifier[]>([])
 watch(() => posStore.isModifierModalOpen, (isOpen) => {
   if (isOpen) {
     selectedModifiers.value = []
+    if (posStore.selectedProductForModifiers?.modifier_groups) {
+      for (const group of posStore.selectedProductForModifiers.modifier_groups) {
+        if (!group.modifiers || group.modifiers.length === 0) continue
+
+        if (group.selection_mode === 'single') {
+          const defaultMod = group.modifiers.find(m => m.is_default === 1) || group.modifiers[0]
+          if (defaultMod) {
+            selectedModifiers.value.push({
+              group_id: group.id,
+              group_name: group.name,
+              modifier_id: defaultMod.id,
+              name: defaultMod.name,
+              price_adjustment: defaultMod.price_adjustment
+            })
+          }
+        } else {
+          // Para selecciones múltiples, preseleccionar opciones marcadas con pin default
+          const defaultMods = group.modifiers.filter(m => m.is_default === 1)
+          const limit = group.selection_limit > 0 ? group.selection_limit : defaultMods.length
+          for (const defMod of defaultMods.slice(0, limit)) {
+            selectedModifiers.value.push({
+              group_id: group.id,
+              group_name: group.name,
+              modifier_id: defMod.id,
+              name: defMod.name,
+              price_adjustment: defMod.price_adjustment
+            })
+          }
+        }
+      }
+    }
   }
 })
 
@@ -124,7 +160,7 @@ function toggleModifier(group: ModifierGroup, mod: ModifierOption) {
 
 function confirmAddWithModifiers() {
   if (posStore.selectedProductForModifiers) {
-    posStore.addProductToCart(posStore.selectedProductForModifiers, selectedModifiers.value)
+    posStore.addProductToCart(posStore.selectedProductForModifiers, selectedModifiers.value, true)
   }
   posStore.isModifierModalOpen = false
 }

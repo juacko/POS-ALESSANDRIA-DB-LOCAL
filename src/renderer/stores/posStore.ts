@@ -15,6 +15,15 @@ export const usePosStore = defineStore('pos', () => {
   const isPaymentModalOpen = ref<boolean>(false)
   const selectedProductForModifiers = ref<Product | null>(null)
   const isModifierModalOpen = ref<boolean>(false)
+  const isMobileCartOpen = ref<boolean>(false)
+
+  function openMobileCart() {
+    isMobileCartOpen.value = true
+  }
+
+  function closeMobileCart() {
+    isMobileCartOpen.value = false
+  }
 
   // Subtotal, impuestos (opcional), Total
   const subtotal = computed(() => {
@@ -36,13 +45,16 @@ export const usePosStore = defineStore('pos', () => {
       if (existing) {
         currentOrder.value = existing
         cartItems.value = existing.items || []
+        // Si la mesa ya tiene comanda/pedido activo, mostrar el pedido primero
+        isMobileCartOpen.value = true
         return
       }
     }
 
-    // Nueva orden vacía
+    // Nueva orden vacía (mesa libre)
     currentOrder.value = null
     cartItems.value = []
+    isMobileCartOpen.value = false
   }
 
   function startQuickOrder() {
@@ -50,11 +62,20 @@ export const usePosStore = defineStore('pos', () => {
     activeTableNumber.value = 'RAPIDO'
     currentOrder.value = null
     cartItems.value = []
+    isMobileCartOpen.value = false
   }
 
-  function addProductToCart(product: Product, selectedMods: SelectedModifier[] = []) {
-    // Si el producto tiene grupos de modificadores y no se enviaron modificadores aún, abrir el modal de modificadores
-    if (product.modifier_groups && product.modifier_groups.length > 0 && selectedMods.length === 0) {
+  function loadExistingOrder(order: Order) {
+    activeTableId.value = order.table_id || null
+    activeTableNumber.value = order.table_number
+    currentOrder.value = order
+    cartItems.value = order.items ? [...order.items] : []
+    isMobileCartOpen.value = true
+  }
+
+  function addProductToCart(product: Product, selectedMods: SelectedModifier[] = [], skipModal = false) {
+    // Si el producto tiene grupos de modificadores y no venimos de confirmar el modal, abrir el modal
+    if (product.modifier_groups && product.modifier_groups.length > 0 && !skipModal) {
       selectedProductForModifiers.value = product
       isModifierModalOpen.value = true
       return
@@ -110,6 +131,7 @@ export const usePosStore = defineStore('pos', () => {
   function clearCart() {
     cartItems.value = []
     currentOrder.value = null
+    isMobileCartOpen.value = false
   }
 
   async function saveOrderToTable() {
@@ -185,10 +207,14 @@ export const usePosStore = defineStore('pos', () => {
     isPaymentModalOpen,
     selectedProductForModifiers,
     isModifierModalOpen,
+    isMobileCartOpen,
+    openMobileCart,
+    closeMobileCart,
     subtotal,
     totalAmount,
     itemsCount,
     loadOrderForTable,
+    loadExistingOrder,
     startQuickOrder,
     addProductToCart,
     updateItemQuantity,

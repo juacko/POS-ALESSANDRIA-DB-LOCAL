@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && electron-builder",
     "build:win": "vue-tsc --noEmit && vite build && electron-builder --win",
+    "build:mac": "vue-tsc --noEmit && vite build && electron-builder --mac",
+    "rebuild": "node node_modules/electron/install.js && electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps",
     "preview": "vite preview"
   },
   "dependencies": {

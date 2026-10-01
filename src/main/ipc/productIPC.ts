@@ -15,15 +15,48 @@ export function registerProductIPC() {
     return ProductRepository.getModifierGroups()
   })
 
-  ipcMain.handle('products:createProduct', (_, data: { product: Partial<Product>; modifierGroupIds: string[] }) => {
-    return ProductRepository.createProduct(data.product, data.modifierGroupIds)
+  ipcMain.handle('products:createProduct', (_, data: { product: Partial<Product>; modifierGroups: (string | any)[] }) => {
+    return ProductRepository.createProduct(data.product, data.modifierGroups)
   })
 
-  ipcMain.handle('products:updateProduct', (_, data: { id: string; product: Partial<Product>; modifierGroupIds?: string[] }) => {
-    return ProductRepository.updateProduct(data.id, data.product, data.modifierGroupIds)
+  ipcMain.handle('products:updateProduct', (_, data: { id: string; product: Partial<Product>; modifierGroups?: (string | any)[] }) => {
+    return ProductRepository.updateProduct(data.id, data.product, data.modifierGroups)
   })
 
   ipcMain.handle('products:toggleActive', (_, data: { id: string; active: number }) => {
     return ProductRepository.toggleProductActive(data.id, data.active)
+  })
+
+  // Modificadores y Variantes
+  ipcMain.handle('products:createModifierGroup', (_, data: { name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) => {
+    return ProductRepository.createModifierGroup(data)
+  })
+
+  ipcMain.handle('products:updateModifierGroup', (_, data: { id: string; name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) => {
+    return ProductRepository.updateModifierGroup(data.id, data)
+  })
+
+  ipcMain.handle('products:deleteModifierGroup', (_, data: { id: string }) => {
+    return ProductRepository.deleteModifierGroup(data.id)
+  })
+
+  ipcMain.handle('products:duplicateModifierGroup', (_, data: { id: string; name?: string }) => {
+    return ProductRepository.duplicateModifierGroup(data.id, data.name)
+  })
+
+  ipcMain.handle('products:createModifierOption', (_, data: { group_id: string; name: string; price_adjustment: number; is_default?: number }) => {
+    return ProductRepository.createModifierOption(data)
+  })
+
+  ipcMain.handle('products:updateModifierOption', (_, data: { id: string; name: string; price_adjustment: number; is_default?: number }) => {
+    return ProductRepository.updateModifierOption(data.id, data)
+  })
+
+  ipcMain.handle('products:setDefaultModifierOption', (_, data: { groupId: string; optionId: string }) => {
+    return ProductRepository.setDefaultModifierOption(data.groupId, data.optionId)
+  })
+
+  ipcMain.handle('products:deleteModifierOption', (_, data: { id: string }) => {
+    return ProductRepository.deleteModifierOption(data.id)
   })
 }

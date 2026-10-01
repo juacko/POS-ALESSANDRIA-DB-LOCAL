@@ -39,13 +39,16 @@ CREATE TABLE IF NOT EXISTS modifiers (
     id TEXT PRIMARY KEY,
     group_id TEXT REFERENCES modifier_groups(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    price_adjustment REAL DEFAULT 0.00
+    price_adjustment REAL DEFAULT 0.00,
+    is_default INTEGER DEFAULT 0
 );
 
 -- Relación Productos <-> Grupos de Modificadores
 CREATE TABLE IF NOT EXISTS product_modifier_groups (
     product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
     group_id TEXT REFERENCES modifier_groups(id) ON DELETE CASCADE,
+    override_mode TEXT CHECK(override_mode IN ('single', 'multiple_unlimited', 'multiple_limited')),
+    override_limit INTEGER,
     PRIMARY KEY (product_id, group_id)
 );
 
@@ -103,7 +106,8 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INTEGER NOT NULL,
     unit_price REAL NOT NULL,
     final_price REAL NOT NULL,
-    modifiers_detail TEXT
+    modifiers_detail TEXT,
+    is_served INTEGER DEFAULT 0
 );
 
 -- Pagos Registrados

@@ -32,19 +32,68 @@ export const useProductStore = defineStore('products', () => {
     })
   })
 
-  async function createProduct(product: Partial<Product>, modifierGroupIds: string[]) {
-    await api.createProduct({ product, modifierGroupIds })
+  async function createProduct(product: Partial<Product>, modifierGroups: (string | any)[]) {
+    await api.createProduct({ product, modifierGroups })
     await loadCatalog()
   }
 
-  async function updateProduct(id: string, product: Partial<Product>, modifierGroupIds?: string[]) {
-    await api.updateProduct({ id, product, modifierGroupIds })
+  async function updateProduct(id: string, product: Partial<Product>, modifierGroups?: (string | any)[]) {
+    await api.updateProduct({ id, product, modifierGroups })
     await loadCatalog()
   }
 
   async function toggleProductActive(id: string, active: number) {
     await api.toggleProductActive({ id, active })
     await loadCatalog()
+  }
+
+  // Acciones de Modificadores y Variantes
+  async function createModifierGroup(data: { name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) {
+    const created = await api.createModifierGroup(data)
+    await loadCatalog()
+    return created
+  }
+
+  async function updateModifierGroup(id: string, data: { name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) {
+    const updated = await api.updateModifierGroup({ id, ...data })
+    await loadCatalog()
+    return updated
+  }
+
+  async function deleteModifierGroup(id: string) {
+    const success = await api.deleteModifierGroup({ id })
+    await loadCatalog()
+    return success
+  }
+
+  async function duplicateModifierGroup(id: string, name?: string) {
+    const duplicated = await api.duplicateModifierGroup({ id, name })
+    await loadCatalog()
+    return duplicated
+  }
+
+  async function createModifierOption(data: { group_id: string; name: string; price_adjustment: number; is_default?: number }) {
+    const created = await api.createModifierOption(data)
+    await loadCatalog()
+    return created
+  }
+
+  async function updateModifierOption(id: string, data: { name: string; price_adjustment: number; is_default?: number }) {
+    const updated = await api.updateModifierOption({ id, ...data })
+    await loadCatalog()
+    return updated
+  }
+
+  async function setDefaultModifierOption(groupId: string, optionId: string) {
+    const success = await api.setDefaultModifierOption({ groupId, optionId })
+    await loadCatalog()
+    return success
+  }
+
+  async function deleteModifierOption(id: string) {
+    const success = await api.deleteModifierOption({ id })
+    await loadCatalog()
+    return success
   }
 
   return {
@@ -58,6 +107,14 @@ export const useProductStore = defineStore('products', () => {
     loadCatalog,
     createProduct,
     updateProduct,
-    toggleProductActive
+    toggleProductActive,
+    createModifierGroup,
+    updateModifierGroup,
+    deleteModifierGroup,
+    duplicateModifierGroup,
+    createModifierOption,
+    updateModifierOption,
+    setDefaultModifierOption,
+    deleteModifierOption
   }
 })

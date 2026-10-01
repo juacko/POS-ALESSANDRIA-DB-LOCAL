@@ -5,6 +5,7 @@ import PosView from '../views/PosView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import CashierView from '../views/CashierView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import ReportsView from '../views/ReportsView.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const routes = [
@@ -18,6 +19,12 @@ const routes = [
     path: '/cashier',
     name: 'cashier',
     component: CashierView,
+    meta: { roles: ['Administrador', 'Cajero'] }
+  },
+  {
+    path: '/reports',
+    name: 'reports',
+    component: ReportsView,
     meta: { roles: ['Administrador', 'Cajero'] }
   },
   {

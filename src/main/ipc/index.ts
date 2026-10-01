@@ -4,6 +4,7 @@ import { registerCashierIPC } from './cashierIPC'
 import { registerOrderIPC } from './orderIPC'
 import { registerUserIPC } from './userIPC'
 import { registerServerIPC } from './serverIPC'
+import { registerReportIPC } from './reportIPC'
 
 export function registerAllIPCHandlers() {
   registerProductIPC()
@@ -12,4 +13,5 @@ export function registerAllIPCHandlers() {
   registerOrderIPC()
   registerUserIPC()
   registerServerIPC()
+  registerReportIPC()
 }

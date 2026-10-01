@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { UtensilsCrossed, Zap, ClipboardList, Wallet, Package } from 'lucide-vue-next'
+import { UtensilsCrossed, Zap, ClipboardList, Wallet, Package, BarChart3 } from 'lucide-vue-next'
 import { usePosStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -71,7 +71,7 @@ const navItems = computed<NavItem[]>(() => {
     }
   ]
 
-  // Solo Administrador y Cajero tienen acceso a Caja
+  // Solo Administrador y Cajero tienen acceso a Caja y Reportes
   if (authStore.isCashier) {
     items.push({
       id: 'cashier',
@@ -79,9 +79,15 @@ const navItems = computed<NavItem[]>(() => {
       icon: Wallet,
       activeClass: 'bg-emerald-600 text-white shadow-emerald-200'
     })
+    items.push({
+      id: 'reports',
+      label: 'Reportes',
+      icon: BarChart3,
+      activeClass: 'bg-indigo-700 text-white shadow-indigo-200'
+    })
   }
 
-  // Si es administrador, agregar acceso a Catálogo/Ajustes
+  // Si es administrador, agregar Ajustes
   if (authStore.isAdmin) {
     items.push({
       id: 'settings',
@@ -106,6 +112,9 @@ function isActive(id: string): boolean {
   }
   if (id === 'cashier') {
     return currentRouteName.value === 'cashier'
+  }
+  if (id === 'reports') {
+    return currentRouteName.value === 'reports'
   }
   if (id === 'settings') {
     return currentRouteName.value === 'settings'

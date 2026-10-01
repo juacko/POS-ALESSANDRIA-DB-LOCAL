@@ -6,7 +6,12 @@ import { TableRepository } from './TableRepository'
 export class OrderRepository {
   static getOrderById(id: string): Order | null {
     const db = getDatabase()
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as Order | undefined
+    const order = db.prepare(`
+      SELECT o.*, u.full_name as user_name
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.id = ?
+    `).get(id) as Order | undefined
     if (!order) return null
 
     const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(id) as OrderItem[]
@@ -34,6 +39,17 @@ export class OrderRepository {
 
     if (!order) return null
     return this.getOrderById(order.id)
+  }
+
+  static getActiveOrders(): Order[] {
+    const db = getDatabase()
+    const orders = db.prepare(`
+      SELECT id FROM orders 
+      WHERE status = 'Abierta' 
+      ORDER BY created_at ASC
+    `).all() as { id: string }[]
+
+    return orders.map(o => this.getOrderById(o.id)!).filter(Boolean)
   }
 
   static createOrder(
@@ -76,14 +92,15 @@ export class OrderRepository {
 
     let totalAmount = 0
     const insertItem = db.prepare(`
-      INSERT INTO order_items (id, order_id, product_id, product_name, quantity, unit_price, final_price, modifiers_detail)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO order_items (id, order_id, product_id, product_name, quantity, unit_price, final_price, modifiers_detail, is_served)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     for (const item of items) {
       const itemId = item.id || `item-${Math.random().toString(36).substr(2, 9)}`
       const modifiersDetail = item.selected_modifiers ? JSON.stringify(item.selected_modifiers) : (item.modifiers_detail || '')
       const finalPrice = item.final_price ?? (item.unit_price! * item.quantity!)
+      const isServed = item.is_served ? 1 : 0
       
       insertItem.run(
         itemId,
@@ -93,7 +110,8 @@ export class OrderRepository {
         item.quantity,
         item.unit_price,
         finalPrice,
-        modifiersDetail
+        modifiersDetail,
+        isServed
       )
 
       totalAmount += finalPrice
@@ -101,6 +119,21 @@ export class OrderRepository {
 
     // Actualizar total_amount de la orden
     db.prepare('UPDATE orders SET total_amount = ? WHERE id = ?').run(totalAmount, orderId)
+  }
+
+  static toggleItemServed(itemId: string): boolean {
+    const db = getDatabase()
+    const item = db.prepare('SELECT is_served FROM order_items WHERE id = ?').get(itemId) as { is_served: number } | undefined
+    if (!item) return false
+    const nextVal = item.is_served === 1 ? 0 : 1
+    const res = db.prepare('UPDATE order_items SET is_served = ? WHERE id = ?').run(nextVal, itemId)
+    return res.changes > 0
+  }
+
+  static markAllOrderItemsServed(orderId: string): boolean {
+    const db = getDatabase()
+    const res = db.prepare('UPDATE order_items SET is_served = 1 WHERE order_id = ?').run(orderId)
+    return res.changes > 0
   }
 
   static registerPaymentsAndClose(
@@ -141,12 +174,12 @@ export class OrderRepository {
     return this.getOrderById(orderId)!
   }
 
-  static getOrdersHistory(limit = 50): Order[] {
+  static getOrdersHistory(limit = 100): Order[] {
     const db = getDatabase()
     const orders = db.prepare(`
-      SELECT * FROM orders ORDER BY created_at DESC LIMIT ?
-    `).all(limit) as Order[]
+      SELECT id FROM orders ORDER BY created_at DESC LIMIT ?
+    `).all(limit) as { id: string }[]
 
-    return orders.map(o => this.getOrderById(o.id)!)
+    return orders.map(o => this.getOrderById(o.id)!).filter(Boolean)
   }
 }

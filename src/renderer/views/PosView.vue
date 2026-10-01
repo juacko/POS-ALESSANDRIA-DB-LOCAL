@@ -61,15 +61,15 @@
         </div>
       </div>
 
-      <!-- Botón Flotante Móvil para Ver Comanda -->
+      <!-- Botón Flotante Móvil para Ver Pedido / Comanda -->
       <div v-if="posStore.itemsCount > 0" class="md:hidden fixed bottom-[60px] left-3 right-3 z-30">
         <button
-          @click="isMobileCartOpen = true"
+          @click="posStore.openMobileCart()"
           class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-xl shadow-indigo-300 font-extrabold flex items-center justify-between text-xs sm:text-sm transition-all active:scale-95"
         >
           <div class="flex items-center gap-2">
             <ShoppingBag class="w-4 h-4" />
-            <span>Ver Comanda ({{ posStore.itemsCount }})</span>
+            <span>{{ (posStore.activeTableId && posStore.currentOrder) ? 'Ver Pedido Actual' : 'Ver Comanda' }} ({{ posStore.itemsCount }})</span>
           </div>
           <span class="font-black font-heading text-sm sm:text-base">S/. {{ posStore.totalAmount.toFixed(2) }}</span>
         </button>
@@ -78,8 +78,8 @@
 
     <!-- Panel Derecho: Carrito de Compras -->
     <CartPanel
-      :is-mobile-open="isMobileCartOpen"
-      @close-mobile="isMobileCartOpen = false"
+      :is-mobile-open="posStore.isMobileCartOpen"
+      @close-mobile="posStore.closeMobileCart()"
     />
 
     <!-- Modales POS -->
@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
 import { usePosStore } from '@/stores/posStore'
 import { Product } from '@shared/types/product'
@@ -101,7 +101,6 @@ import { Search, ShoppingBag } from 'lucide-vue-next'
 
 const productStore = useProductStore()
 const posStore = usePosStore()
-const isMobileCartOpen = ref(false)
 
 onMounted(async () => {
   await productStore.loadCatalog()

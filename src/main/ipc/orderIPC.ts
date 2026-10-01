@@ -44,7 +44,23 @@ export function registerOrderIPC() {
     return order
   })
 
-  ipcMain.handle('orders:getOrdersHistory', (_, limit = 50) => {
+  ipcMain.handle('orders:getActiveOrders', () => {
+    return OrderRepository.getActiveOrders()
+  })
+
+  ipcMain.handle('orders:toggleItemServed', (_, data: { itemId: string }) => {
+    const success = OrderRepository.toggleItemServed(data.itemId)
+    notifySync('orders')
+    return success
+  })
+
+  ipcMain.handle('orders:markAllServed', (_, data: { orderId: string }) => {
+    const success = OrderRepository.markAllOrderItemsServed(data.orderId)
+    notifySync('orders')
+    return success
+  })
+
+  ipcMain.handle('orders:getOrdersHistory', (_, limit = 100) => {
     return OrderRepository.getOrdersHistory(limit)
   })
 }

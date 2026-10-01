@@ -9,6 +9,7 @@ export interface ModifierOption {
   group_id: string
   name: string
   price_adjustment: number
+  is_default?: number
 }
 
 export interface ModifierGroup {
@@ -17,6 +18,16 @@ export interface ModifierGroup {
   selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'
   selection_limit: number
   modifiers?: ModifierOption[]
+  product_count?: number
+  product_names?: string[]
+  override_mode?: 'single' | 'multiple_unlimited' | 'multiple_limited' | null
+  override_limit?: number | null
+}
+
+export interface ProductModifierGroupConfig {
+  group_id: string
+  override_mode?: 'single' | 'multiple_unlimited' | 'multiple_limited' | null
+  override_limit?: number | null
 }
 
 export interface Product {

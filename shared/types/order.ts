@@ -21,6 +21,7 @@ export interface OrderItem {
   final_price: number
   modifiers_detail: string // JSON stringified array of SelectedModifier or comments
   selected_modifiers?: SelectedModifier[]
+  is_served?: number // 0 = pendiente, 1 = servido
 }
 
 export interface Order {
@@ -30,6 +31,7 @@ export interface Order {
   table_number: string // "RAPIDO" o número de mesa
   cashier_session_id?: string
   user_id?: string
+  user_name?: string
   status: OrderStatus
   total_amount: number
   created_at?: string

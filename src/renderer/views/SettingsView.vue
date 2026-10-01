@@ -10,28 +10,39 @@
         <p class="text-xs text-slate-400">Administración de catálogo, precios y equipo de trabajo</p>
       </div>
 
-      <!-- Selector de Pestañas (Catálogo vs Personal) -->
-      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start sm:self-auto">
+      <!-- Selector de Pestañas (Catálogo vs Modificadores vs Personal) -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start sm:self-auto overflow-x-auto max-w-full">
         <button
           @click="activeTab = 'catalog'"
-          class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+          class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0"
           :class="activeTab === 'catalog'
             ? 'bg-white text-indigo-700 shadow-sm'
             : 'text-slate-600 hover:text-slate-900'"
         >
           <Package class="w-4 h-4" />
-          <span>Catálogo de Productos</span>
+          <span>Productos</span>
+        </button>
+
+        <button
+          @click="activeTab = 'modifiers'"
+          class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0"
+          :class="activeTab === 'modifiers'
+            ? 'bg-white text-indigo-700 shadow-sm'
+            : 'text-slate-600 hover:text-slate-900'"
+        >
+          <SlidersHorizontal class="w-4 h-4" />
+          <span>Modificadores y Variantes</span>
         </button>
 
         <button
           @click="activeTab = 'users'"
-          class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+          class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0"
           :class="activeTab === 'users'
             ? 'bg-white text-indigo-700 shadow-sm'
             : 'text-slate-600 hover:text-slate-900'"
         >
           <Users class="w-4 h-4" />
-          <span>Personal y Permisos</span>
+          <span>Personal</span>
         </button>
       </div>
     </div>
@@ -139,8 +150,238 @@
       </div>
     </template>
 
-    <!-- ==================== PESTAÑA 2: PERSONAL Y PERMISOS ==================== -->
-    <template v-else>
+    <!-- ==================== PESTAÑA 2: MODIFICADORES Y VARIANTES ==================== -->
+    <template v-else-if="activeTab === 'modifiers'">
+      <!-- Buscador y Acciones -->
+      <div class="bg-white border-b border-slate-200/80 px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3 flex-1 max-w-xl">
+          <div class="relative flex-1">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              v-model="searchModifierQuery"
+              type="text"
+              placeholder="Buscar grupo, variante u opción..."
+              class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-500 outline-none transition-all"
+            />
+          </div>
+
+          <select
+            v-model="selectedModifierMode"
+            class="px-3 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-semibold text-slate-700 outline-none shrink-0"
+          >
+            <option value="all">Todos los Tipos</option>
+            <option value="single">Solo Variantes (Selección Única)</option>
+            <option value="multiple_limited">Múltiple con Límite</option>
+            <option value="multiple_unlimited">Múltiple Libre / Toppings</option>
+          </select>
+        </div>
+
+        <button
+          @click="openCreateGroupModal"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95"
+        >
+          <Plus class="w-4 h-4" />
+          <span>NUEVO GRUPO</span>
+        </button>
+      </div>
+
+      <!-- Listado de Grupos de Modificadores -->
+      <div class="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 md:pb-16 space-y-4">
+        <!-- Banner Explicativo -->
+        <div class="bg-gradient-to-r from-indigo-50/80 to-purple-50/60 p-4 rounded-2xl border border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <div class="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-200">
+              <SlidersHorizontal class="w-5 h-5" />
+            </div>
+            <div>
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900 font-heading">
+                Configuración de Variantes y Modificadores
+              </h3>
+              <p class="text-[11px] text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
+                Define presentaciones obligatorias como <strong>tamaños</strong> y <strong>sabores</strong> (variantes de 1 opción), así como adicionales o <strong>toppings</strong> con o sin costo extra. Luego podrás asignarlos a cualquier producto en el catálogo.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado Vacío -->
+        <div
+          v-if="filteredModifierGroups.length === 0"
+          class="bg-white rounded-2xl border border-slate-200 p-8 text-center"
+        >
+          <SlidersHorizontal class="w-12 h-12 text-slate-300 mx-auto mb-2" />
+          <p class="text-sm font-bold text-slate-700">No se encontraron grupos de modificadores</p>
+          <p class="text-xs text-slate-400 mt-1">Crea tu primer grupo para definir tamaños, sabores o adicionales.</p>
+          <button
+            @click="openCreateGroupModal"
+            class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all"
+          >
+            <Plus class="w-4 h-4" />
+            <span>Crear Primer Grupo</span>
+          </button>
+        </div>
+
+        <!-- Tarjetas de Grupos -->
+        <div v-else class="space-y-4">
+          <div
+            v-for="group in filteredModifierGroups"
+            :key="group.id"
+            class="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden transition-all hover:border-slate-300"
+          >
+            <!-- Cabecera de la Tarjeta del Grupo -->
+            <div class="p-4 bg-slate-50/70 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                  :class="group.selection_mode === 'single'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : (group.selection_mode === 'multiple_limited' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800')"
+                >
+                  <Layers v-if="group.selection_mode === 'single'" class="w-5 h-5" />
+                  <Sparkles v-else class="w-5 h-5" />
+                </div>
+
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h4 class="text-sm font-bold text-slate-900 font-heading">{{ group.name }}</h4>
+
+                    <!-- Badge Modo -->
+                    <span
+                      v-if="group.selection_mode === 'single'"
+                      class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-bold"
+                    >
+                      Variante (1 sola opción)
+                    </span>
+                    <span
+                      v-else-if="group.selection_mode === 'multiple_limited'"
+                      class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold"
+                    >
+                      Múltiple (Máx. {{ group.selection_limit }} selecciones)
+                    </span>
+                    <span
+                      v-else
+                      class="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-[10px] font-bold"
+                    >
+                      Múltiple Libre (Adicionales)
+                    </span>
+
+                    <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-semibold">
+                      {{ group.modifiers?.length || 0 }} {{ (group.modifiers?.length === 1) ? 'opción' : 'opciones' }}
+                    </span>
+                  </div>
+
+                  <!-- Productos vinculados -->
+                  <p class="text-[11px] text-slate-400 mt-0.5">
+                    <template v-if="group.product_count && group.product_count > 0">
+                      Asignado a <span class="font-semibold text-slate-600">{{ group.product_count }} {{ group.product_count === 1 ? 'producto' : 'productos' }}</span>:
+                      <span class="text-slate-500 italic">{{ group.product_names?.slice(0, 4).join(', ') }}{{ (group.product_names?.length || 0) > 4 ? '...' : '' }}</span>
+                    </template>
+                    <template v-else>
+                      Sin productos asignados actualmente
+                    </template>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Acciones del Grupo -->
+              <div class="flex items-center gap-1.5 self-end sm:self-center">
+                <button
+                  @click="openAddOptionModal(group)"
+                  class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 active:scale-95"
+                >
+                  <Plus class="w-3.5 h-3.5" />
+                  <span>Agregar Opción</span>
+                </button>
+
+                <button
+                  @click="handleDuplicateGroup(group)"
+                  class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Duplicar Grupo"
+                >
+                  <Copy class="w-4 h-4" />
+                </button>
+
+                <button
+                  @click="openEditGroupModal(group)"
+                  class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Editar Grupo"
+                >
+                  <Pencil class="w-4 h-4" />
+                </button>
+
+                <button
+                  @click="handleDeleteGroup(group)"
+                  class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                  title="Eliminar Grupo"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabla de Opciones del Grupo -->
+            <div class="p-3 sm:p-4">
+              <div v-if="!group.modifiers || group.modifiers.length === 0" class="text-center py-4 text-slate-400 text-xs">
+                No hay opciones registradas en este grupo todavía. Haz clic en "Agregar Opción" para registrar la primera.
+              </div>
+
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                <div
+                  v-for="mod in group.modifiers"
+                  :key="mod.id"
+                  class="flex items-center justify-between p-2.5 rounded-xl border transition-all"
+                  :class="mod.is_default === 1 ? 'border-amber-300 bg-amber-50/50 shadow-xs' : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/70'"
+                >
+                  <div class="flex-1 min-w-0 pr-2">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <p class="text-xs font-bold text-slate-800 truncate">{{ mod.name }}</p>
+                      <span
+                        v-if="mod.is_default === 1"
+                        class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300"
+                        title="Opción predeterminada al vender"
+                      >
+                        📌 Default
+                      </span>
+                    </div>
+                    <p class="text-[11px] font-semibold mt-0.5" :class="mod.price_adjustment > 0 ? 'text-indigo-600 font-extrabold' : 'text-slate-400'">
+                      {{ mod.price_adjustment > 0 ? `+ S/. ${mod.price_adjustment.toFixed(2)}` : 'Incluido (+S/. 0.00)' }}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-1 shrink-0">
+                    <button
+                      @click="handleSetDefaultOption(group.id, mod.id)"
+                      class="p-1 rounded transition-colors"
+                      :class="mod.is_default === 1 ? 'text-amber-600 bg-amber-100 hover:bg-amber-200' : 'text-slate-300 hover:text-amber-500 hover:bg-white'"
+                      :title="mod.is_default === 1 ? 'Opción predeterminada activa' : 'Marcar como opción predeterminada al vender'"
+                    >
+                      <Pin class="w-3.5 h-3.5" :class="mod.is_default === 1 ? 'fill-amber-500' : ''" />
+                    </button>
+                    <button
+                      @click="openEditOptionModal(group, mod)"
+                      class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-white rounded transition-colors"
+                      title="Editar Opción"
+                    >
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      @click="handleDeleteOption(mod)"
+                      class="p-1 text-slate-400 hover:text-rose-600 hover:bg-white rounded transition-colors"
+                      title="Eliminar Opción"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ==================== PESTAÑA 3: PERSONAL Y PERMISOS ==================== -->
+    <template v-else-if="activeTab === 'users'">
       <!-- Subheader Personal -->
       <div class="bg-white border-b border-slate-200/80 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
         <div>
@@ -299,6 +540,24 @@
       @close="isUserModalOpen = false"
       @saved="handleUserSaved"
     />
+
+    <!-- Modal Grupo de Modificadores / Variantes -->
+    <ModifierGroupModal
+      :is-open="isGroupModalOpen"
+      :group-to-edit="groupToEdit"
+      @close="isGroupModalOpen = false"
+      @saved="handleGroupSaved"
+    />
+
+    <!-- Modal Opción de Modificador -->
+    <ModifierOptionModal
+      :is-open="isOptionModalOpen"
+      :group-id="activeGroupIdForOption"
+      :group-name="activeGroupNameForOption"
+      :option-to-edit="optionToEdit"
+      @close="isOptionModalOpen = false"
+      @saved="handleOptionSaved"
+    />
   </div>
 </template>
 
@@ -306,10 +565,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
 import { useAuthStore } from '@/stores/authStore'
-import { Product } from '@shared/types/product'
+import { Product, ModifierGroup, ModifierOption } from '@shared/types/product'
 import { User } from '@shared/types/user'
 import ProductFormModal from '@/components/products/ProductFormModal.vue'
 import UserFormModal from '@/components/users/UserFormModal.vue'
+import ModifierGroupModal from '@/components/products/ModifierGroupModal.vue'
+import ModifierOptionModal from '@/components/products/ModifierOptionModal.vue'
 import {
   Settings,
   Plus,
@@ -321,20 +582,37 @@ import {
   ShieldCheck,
   Wallet,
   UtensilsCrossed,
+  SlidersHorizontal,
+  Layers,
+  Sparkles,
+  Trash2,
+  Copy,
   Check,
-  X
+  X,
+  Pin
 } from 'lucide-vue-next'
 
 const productStore = useProductStore()
 const authStore = useAuthStore()
 
-const activeTab = ref<'catalog' | 'users'>('catalog')
+const activeTab = ref<'catalog' | 'modifiers' | 'users'>('catalog')
 
 // Estado Catálogo
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const isFormModalOpen = ref(false)
 const productToEdit = ref<Product | null>(null)
+
+// Estado Modificadores y Variantes
+const searchModifierQuery = ref('')
+const selectedModifierMode = ref('all')
+const isGroupModalOpen = ref(false)
+const groupToEdit = ref<ModifierGroup | null>(null)
+
+const isOptionModalOpen = ref(false)
+const activeGroupIdForOption = ref('')
+const activeGroupNameForOption = ref('')
+const optionToEdit = ref<ModifierOption | null>(null)
 
 // Estado Usuarios
 const isUserModalOpen = ref(false)
@@ -355,6 +633,19 @@ const filteredProducts = computed(() => {
   })
 })
 
+const filteredModifierGroups = computed(() => {
+  return productStore.modifierGroups.filter(g => {
+    if (selectedModifierMode.value !== 'all' && g.selection_mode !== selectedModifierMode.value) {
+      return false
+    }
+    if (!searchModifierQuery.value.trim()) return true
+    const q = searchModifierQuery.value.toLowerCase()
+    const matchGroupName = g.name.toLowerCase().includes(q)
+    const matchOptions = g.modifiers?.some(m => m.name.toLowerCase().includes(q))
+    return matchGroupName || matchOptions
+  })
+})
+
 function openCreateModal() {
   productToEdit.value = null
   isFormModalOpen.value = true
@@ -370,6 +661,83 @@ async function toggleActive(product: Product) {
   await productStore.toggleProductActive(product.id, nextState)
 }
 
+// Métodos de Modificadores y Variantes
+function openCreateGroupModal() {
+  groupToEdit.value = null
+  isGroupModalOpen.value = true
+}
+
+function openEditGroupModal(group: ModifierGroup) {
+  groupToEdit.value = group
+  isGroupModalOpen.value = true
+}
+
+async function handleDuplicateGroup(group: ModifierGroup) {
+  const newName = prompt(`Ingresa el nombre para la copia de "${group.name}":`, `${group.name} (Copia)`)
+  if (!newName || !newName.trim()) return
+
+  try {
+    await productStore.duplicateModifierGroup(group.id, newName.trim())
+  } catch (e: any) {
+    alert(e.message || 'Error al duplicar el grupo')
+  }
+}
+
+async function handleDeleteGroup(group: ModifierGroup) {
+  const confirmMsg = group.product_count && group.product_count > 0
+    ? `El grupo "${group.name}" está asignado a ${group.product_count} producto(s). ¿Estás seguro de que deseas eliminarlo? Se desvinculará automáticamente de dichos productos.`
+    : `¿Estás seguro de eliminar el grupo "${group.name}"?`
+
+  if (!confirm(confirmMsg)) return
+
+  try {
+    await productStore.deleteModifierGroup(group.id)
+  } catch (e: any) {
+    alert(e.message || 'Error al eliminar el grupo')
+  }
+}
+
+function openAddOptionModal(group: ModifierGroup) {
+  activeGroupIdForOption.value = group.id
+  activeGroupNameForOption.value = group.name
+  optionToEdit.value = null
+  isOptionModalOpen.value = true
+}
+
+function openEditOptionModal(group: ModifierGroup, option: ModifierOption) {
+  activeGroupIdForOption.value = group.id
+  activeGroupNameForOption.value = group.name
+  optionToEdit.value = option
+  isOptionModalOpen.value = true
+}
+
+async function handleSetDefaultOption(groupId: string, optionId: string) {
+  try {
+    await productStore.setDefaultModifierOption(groupId, optionId)
+  } catch (e: any) {
+    alert(e.message || 'Error al fijar opción predeterminada')
+  }
+}
+
+async function handleDeleteOption(option: ModifierOption) {
+  if (!confirm(`¿Estás seguro de eliminar la opción "${option.name}"?`)) return
+
+  try {
+    await productStore.deleteModifierOption(option.id)
+  } catch (e: any) {
+    alert(e.message || 'Error al eliminar la opción')
+  }
+}
+
+async function handleGroupSaved() {
+  await productStore.loadCatalog()
+}
+
+async function handleOptionSaved() {
+  await productStore.loadCatalog()
+}
+
+// Métodos de Usuarios
 function openCreateUserModal() {
   userToEdit.value = null
   isUserModalOpen.value = true

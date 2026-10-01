@@ -1,8 +1,30 @@
-import { Product, Category, ModifierGroup } from '@shared/types/product'
+import { Product, Category, ModifierGroup, ModifierOption, ProductModifierGroupConfig } from '@shared/types/product'
 import { Table } from '@shared/types/table'
 import { CashierSession, CashMovement } from '@shared/types/cashier'
 import { Order, OrderItem } from '@shared/types/order'
 import { User, UserRole } from '@shared/types/user'
+import {
+  SalesSummary,
+  SalesTrendPoint,
+  TopProductItem,
+  CategorySaleItem,
+  CashierSessionAudit,
+  StaffSaleItem,
+  DetailedOrderExportItem
+} from '@shared/types/report'
+
+export interface NetworkInterfaceItem {
+  name: string
+  ip: string
+  isDefault: boolean
+}
+
+export interface NetworkInfoResponse {
+  ip: string
+  port: number
+  url: string
+  interfaces: NetworkInterfaceItem[]
+}
 
 export interface POSAPI {
   // Autenticación y Gestión de Usuarios
@@ -17,9 +39,19 @@ export interface POSAPI {
   getCategories: () => Promise<Category[]>
   getProducts: (activeOnly?: boolean) => Promise<Product[]>
   getModifierGroups: () => Promise<ModifierGroup[]>
-  createProduct: (data: { product: Partial<Product>; modifierGroupIds: string[] }) => Promise<Product>
-  updateProduct: (data: { id: string; product: Partial<Product>; modifierGroupIds?: string[] }) => Promise<Product>
+  createProduct: (data: { product: Partial<Product>; modifierGroups: (string | ProductModifierGroupConfig)[] }) => Promise<Product>
+  updateProduct: (data: { id: string; product: Partial<Product>; modifierGroups?: (string | ProductModifierGroupConfig)[] }) => Promise<Product>
   toggleProductActive: (data: { id: string; active: number }) => Promise<boolean>
+
+  // Modificadores y Variantes
+  createModifierGroup: (data: { name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) => Promise<ModifierGroup>
+  updateModifierGroup: (data: { id: string; name: string; selection_mode: 'single' | 'multiple_unlimited' | 'multiple_limited'; selection_limit?: number }) => Promise<ModifierGroup>
+  deleteModifierGroup: (data: { id: string }) => Promise<boolean>
+  duplicateModifierGroup: (data: { id: string; name?: string }) => Promise<ModifierGroup>
+  createModifierOption: (data: { group_id: string; name: string; price_adjustment: number; is_default?: number }) => Promise<ModifierOption>
+  updateModifierOption: (data: { id: string; name: string; price_adjustment: number; is_default?: number }) => Promise<ModifierOption>
+  setDefaultModifierOption: (data: { groupId: string; optionId: string }) => Promise<boolean>
+  deleteModifierOption: (data: { id: string }) => Promise<boolean>
 
   // Mesas
   getTables: () => Promise<Table[]>
@@ -49,9 +81,21 @@ export interface POSAPI {
     payments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]
   }) => Promise<Order>
   getOrdersHistory: (limit?: number) => Promise<Order[]>
+  getActiveOrders: () => Promise<Order[]>
+  toggleItemServed: (data: { itemId: string }) => Promise<boolean>
+  markAllOrderItemsServed: (data: { orderId: string }) => Promise<boolean>
 
   // Red y Servidor Móvil
-  getNetworkInfo: () => Promise<{ ip: string; port: number; url: string }>
+  getNetworkInfo: () => Promise<NetworkInfoResponse>
+
+  // Reportes y Analítica
+  getReportsSalesSummary: (data: { startDate: string; endDate: string }) => Promise<SalesSummary>
+  getReportsSalesTrend: (data: { startDate: string; endDate: string; groupBy?: 'hour' | 'day' }) => Promise<SalesTrendPoint[]>
+  getReportsTopProducts: (data: { startDate: string; endDate: string; limit?: number; categoryId?: string }) => Promise<TopProductItem[]>
+  getReportsCategorySales: (data: { startDate: string; endDate: string }) => Promise<CategorySaleItem[]>
+  getReportsCashierSessions: (data: { startDate: string; endDate: string }) => Promise<CashierSessionAudit[]>
+  getReportsStaffSales: (data: { startDate: string; endDate: string }) => Promise<StaffSaleItem[]>
+  getReportsExportData: (data: { startDate: string; endDate: string }) => Promise<DetailedOrderExportItem[]>
 
   // Eventos de Sincronización en Tiempo Real
   onSync?: (callback: (type: string) => void) => () => void

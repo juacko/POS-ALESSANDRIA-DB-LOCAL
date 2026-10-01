@@ -30,8 +30,38 @@ export function getDatabase(): Database.Database {
     // Ejecutar esquemas iniciales
     db.exec(INITIAL_SCHEMA)
 
+    // Migraciones seguras para esquemas existentes
+    runMigrations(db)
+
     // Cargar datos por defecto
     seedInitialData(db)
   }
   return db
+}
+
+function runMigrations(db: Database.Database) {
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(product_modifier_groups)").all() as { name: string }[]
+    const colNames = tableInfo.map(c => c.name)
+    if (!colNames.includes('override_mode')) {
+      db.exec("ALTER TABLE product_modifier_groups ADD COLUMN override_mode TEXT")
+    }
+    if (!colNames.includes('override_limit')) {
+      db.exec("ALTER TABLE product_modifier_groups ADD COLUMN override_limit INTEGER")
+    }
+
+    const modTableInfo = db.prepare("PRAGMA table_info(modifiers)").all() as { name: string }[]
+    const modColNames = modTableInfo.map(c => c.name)
+    if (!modColNames.includes('is_default')) {
+      db.exec("ALTER TABLE modifiers ADD COLUMN is_default INTEGER DEFAULT 0")
+    }
+
+    const orderItemsInfo = db.prepare("PRAGMA table_info(order_items)").all() as { name: string }[]
+    const itemColNames = orderItemsInfo.map(c => c.name)
+    if (!itemColNames.includes('is_served')) {
+      db.exec("ALTER TABLE order_items ADD COLUMN is_served INTEGER DEFAULT 0")
+    }
+  } catch (err) {
+    console.error('[Database Migration Error]', err)
+  }
 }

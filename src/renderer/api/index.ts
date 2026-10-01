@@ -85,6 +85,91 @@ export const api: POSAPI = {
     throw new Error('Solo permitido desde la aplicación principal')
   },
 
+  // Modificadores y Variantes
+  createModifierGroup: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.createModifierGroup(plainData)
+    const res = await fetch('/api/modifier-groups/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    return res.json()
+  },
+  updateModifierGroup: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.updateModifierGroup(plainData)
+    const res = await fetch('/api/modifier-groups/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    return res.json()
+  },
+  deleteModifierGroup: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.deleteModifierGroup(plainData)
+    const res = await fetch('/api/modifier-groups/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    const json = await res.json()
+    return json.success
+  },
+  duplicateModifierGroup: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.duplicateModifierGroup(plainData)
+    const res = await fetch('/api/modifier-groups/duplicate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    return res.json()
+  },
+  createModifierOption: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.createModifierOption(plainData)
+    const res = await fetch('/api/modifiers/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    return res.json()
+  },
+  updateModifierOption: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.updateModifierOption(plainData)
+    const res = await fetch('/api/modifiers/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    return res.json()
+  },
+  setDefaultModifierOption: async (data: { groupId: string; optionId: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.setDefaultModifierOption(plainData)
+    const res = await fetch('/api/modifiers/set-default', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    const json = await res.json()
+    return json.success
+  },
+  deleteModifierOption: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.deleteModifierOption(plainData)
+    const res = await fetch('/api/modifiers/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    const json = await res.json()
+    return json.success
+  },
+
   // Mesas
   getTables: async () => {
     if (window.api) return window.api.getTables()
@@ -196,16 +281,88 @@ export const api: POSAPI = {
     }
     return res.json()
   },
-  getOrdersHistory: async (limit = 50) => {
+  getOrdersHistory: async (limit = 100) => {
     if (window.api) return window.api.getOrdersHistory(limit)
     const res = await fetch(`/api/orders/history?limit=${limit}`)
     return res.json()
+  },
+  getActiveOrders: async () => {
+    if (window.api) return window.api.getActiveOrders()
+    const res = await fetch('/api/orders/active')
+    return res.json()
+  },
+  toggleItemServed: async (data: { itemId: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.toggleItemServed(plainData)
+    const res = await fetch('/api/orders/toggle-item-served', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    const json = await res.json()
+    return json.success
+  },
+  markAllOrderItemsServed: async (data: { orderId: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.markAllOrderItemsServed(plainData)
+    const res = await fetch('/api/orders/mark-all-served', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    const json = await res.json()
+    return json.success
   },
 
   // Red
   getNetworkInfo: async () => {
     if (window.api) return window.api.getNetworkInfo()
     const res = await fetch('/api/network-info')
+    return res.json()
+  },
+
+  // Reportes y Analítica
+  getReportsSalesSummary: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsSalesSummary(plainData)
+    const res = await fetch(`/api/reports/sales-summary?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}`)
+    return res.json()
+  },
+  getReportsSalesTrend: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsSalesTrend(plainData)
+    const res = await fetch(`/api/reports/sales-trend?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}&groupBy=${data.groupBy || 'hour'}`)
+    return res.json()
+  },
+  getReportsTopProducts: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsTopProducts(plainData)
+    const url = `/api/reports/top-products?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}&limit=${data.limit || 15}${data.categoryId ? `&categoryId=${encodeURIComponent(data.categoryId)}` : ''}`
+    const res = await fetch(url)
+    return res.json()
+  },
+  getReportsCategorySales: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsCategorySales(plainData)
+    const res = await fetch(`/api/reports/category-sales?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}`)
+    return res.json()
+  },
+  getReportsCashierSessions: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsCashierSessions(plainData)
+    const res = await fetch(`/api/reports/cashier-sessions?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}`)
+    return res.json()
+  },
+  getReportsStaffSales: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsStaffSales(plainData)
+    const res = await fetch(`/api/reports/staff-sales?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}`)
+    return res.json()
+  },
+  getReportsExportData: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.getReportsExportData(plainData)
+    const res = await fetch(`/api/reports/export-data?startDate=${encodeURIComponent(data.startDate)}&endDate=${encodeURIComponent(data.endDate)}`)
     return res.json()
   }
 }

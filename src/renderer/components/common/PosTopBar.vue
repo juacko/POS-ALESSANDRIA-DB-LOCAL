@@ -61,11 +61,23 @@
         <span>📲 Conectar Móvil</span>
       </button>
 
+      <!-- Reportes Button (Solo visible para Administradores) -->
+      <button
+        v-if="authStore.isAdmin"
+        @click="router.push('/reports')"
+        class="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-transparent hover:border-indigo-100 transition-all"
+        :class="{ 'text-indigo-600 bg-indigo-50 border-indigo-100': route.name === 'reports' }"
+        title="Reportes y Analítica"
+      >
+        <BarChart3 class="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
+
       <!-- Ajustes Config Button (Solo visible para Administradores) -->
       <button
         v-if="authStore.isAdmin"
         @click="router.push('/settings')"
         class="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl border border-transparent hover:border-indigo-100 transition-all"
+        :class="{ 'text-indigo-600 bg-indigo-50 border-indigo-100': route.name === 'settings' }"
         title="Configuración del Sistema"
       >
         <Settings class="w-4 h-4 sm:w-5 sm:h-5" />
@@ -90,7 +102,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
-import { ArrowLeft, Settings, LogOut, Smartphone } from 'lucide-vue-next'
+import { ArrowLeft, Settings, LogOut, Smartphone, BarChart3 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/authStore'
 import { useCashierStore } from '@/stores/cashierStore'
 import MobileConnectModal from './MobileConnectModal.vue'
