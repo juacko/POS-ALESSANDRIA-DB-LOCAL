@@ -58,6 +58,9 @@ const api: POSAPI = {
   getActiveOrders: () => ipcRenderer.invoke('orders:getActiveOrders'),
   toggleItemServed: (data) => ipcRenderer.invoke('orders:toggleItemServed', toPlain(data)),
   markAllOrderItemsServed: (data) => ipcRenderer.invoke('orders:markAllServed', toPlain(data)),
+  cancelActiveOrder: (data) => ipcRenderer.invoke('orders:cancelActiveOrder', toPlain(data)),
+  deleteOrderPayments: (data) => ipcRenderer.invoke('orders:deleteOrderPayments', toPlain(data)),
+  changeOrderPaymentMethod: (data) => ipcRenderer.invoke('orders:changeOrderPaymentMethod', toPlain(data)),
 
   // Red y Servidor Móvil
   getNetworkInfo: () => ipcRenderer.invoke('server:getNetworkInfo'),

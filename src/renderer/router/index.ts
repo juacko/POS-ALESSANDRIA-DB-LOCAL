@@ -7,6 +7,7 @@ import CashierView from '../views/CashierView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import { useAuthStore } from '../stores/authStore'
+import { useNotificationStore } from '../stores/notificationStore'
 
 const routes = [
   { path: '/', redirect: '/tables' },
@@ -53,7 +54,11 @@ router.beforeEach((to, _, next) => {
   const allowedRoles = to.meta.roles as string[] | undefined
   if (allowedRoles && authStore.currentUser) {
     if (!allowedRoles.includes(authStore.currentUser.role)) {
-      alert(`Acceso restringido: Esta sección está reservada para personal con perfil ${allowedRoles.join(' o ')}.`)
+      const notificationStore = useNotificationStore()
+      notificationStore.warning(
+        'Acceso Restringido',
+        `Esta sección está reservada para personal con perfil ${allowedRoles.join(' o ')}.`
+      )
       next({ name: 'tables' })
       return
     }

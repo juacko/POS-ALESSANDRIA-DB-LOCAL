@@ -1,4 +1,5 @@
 import { getDatabase } from '../database/connection'
+import { formatTableDisplay } from '@shared/utils/formatters'
 import {
   SalesSummary,
   SalesTrendPoint,
@@ -373,7 +374,7 @@ export class ReportRepository {
 
       return {
         orderNumber: ord.order_number,
-        tableNumber: ord.table_number === 'RAPIDO' ? 'Pedido Rápido' : `Mesa ${ord.table_number}`,
+        tableNumber: formatTableDisplay(ord.table_number),
         createdAt: ord.created_at,
         closedAt: ord.closed_at,
         status: ord.status,

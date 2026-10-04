@@ -151,6 +151,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useProductStore } from '@/stores/productStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { Product, ModifierGroup, ProductModifierGroupConfig } from '@shared/types/product'
 import Modal from '@/components/common/Modal.vue'
 import { PackagePlus } from 'lucide-vue-next'
@@ -163,6 +164,7 @@ const props = defineProps<{
 const emit = defineEmits(['close'])
 
 const productStore = useProductStore()
+const notificationStore = useNotificationStore()
 
 const isEdit = ref(false)
 const nameInput = ref('')
@@ -258,9 +260,13 @@ async function handleSave() {
         active: 1
       }, modifierPayload)
     }
+    notificationStore.success(
+      isEdit.value ? 'Producto actualizado' : 'Producto creado',
+      `"${nameInput.value}" se guardó correctamente.`
+    )
     emit('close')
   } catch (e: any) {
-    alert(e.message || 'Error al guardar producto')
+    notificationStore.error('Error al guardar producto', e.message || 'No se pudo guardar el producto')
   }
 }
 </script>

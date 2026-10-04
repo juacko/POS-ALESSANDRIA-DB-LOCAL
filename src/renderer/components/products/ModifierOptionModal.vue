@@ -81,6 +81,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useProductStore } from '@/stores/productStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { ModifierOption } from '@shared/types/product'
 import Modal from '@/components/common/Modal.vue'
 import { PlusCircle } from 'lucide-vue-next'
@@ -95,6 +96,7 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'saved'])
 
 const productStore = useProductStore()
+const notificationStore = useNotificationStore()
 const isEdit = ref(false)
 const isSubmitting = ref(false)
 const nameInput = ref('')
@@ -139,10 +141,14 @@ async function handleSave() {
         is_default: isDef
       })
     }
+    notificationStore.success(
+      isEdit.value ? 'Opción actualizada' : 'Opción creada',
+      `"${nameInput.value.trim()}" se guardó correctamente.`
+    )
     emit('saved')
     emit('close')
   } catch (e: any) {
-    alert(e.message || 'Error al guardar la opción')
+    notificationStore.error('Error al guardar opción', e.message || 'No se pudo guardar la opción')
   } finally {
     isSubmitting.value = false
   }

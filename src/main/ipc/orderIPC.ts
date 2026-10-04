@@ -63,4 +63,39 @@ export function registerOrderIPC() {
   ipcMain.handle('orders:getOrdersHistory', (_, limit = 100) => {
     return OrderRepository.getOrdersHistory(limit)
   })
+
+  ipcMain.handle('orders:cancelActiveOrder', (_, data: { orderId: string; reason: string; userId?: string; userName?: string }) => {
+    const order = OrderRepository.cancelActiveOrder(data.orderId, data.reason, data.userId, data.userName)
+    notifySync('tables')
+    notifySync('orders')
+    return order
+  })
+
+  ipcMain.handle('orders:deleteOrderPayments', (_, data: {
+    orderId: string
+    reason: string
+    destinationStatus: 'Abierta' | 'Cancelada'
+    userId?: string
+    userName?: string
+  }) => {
+    const order = OrderRepository.deleteOrderPayments(data.orderId, data.reason, data.destinationStatus, data.userId, data.userName)
+    notifySync('tables')
+    notifySync('orders')
+    notifySync('cashier')
+    return order
+  })
+
+  ipcMain.handle('orders:changeOrderPaymentMethod', (_, data: {
+    orderId: string
+    newPayments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]
+    reason: string
+    userId?: string
+    userName?: string
+  }) => {
+    const order = OrderRepository.changeOrderPaymentMethod(data.orderId, data.newPayments, data.reason, data.userId, data.userName)
+    notifySync('tables')
+    notifySync('orders')
+    notifySync('cashier')
+    return order
+  })
 }

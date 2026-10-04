@@ -96,10 +96,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useCashierStore } from '@/stores/cashierStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import Modal from '@/components/common/Modal.vue'
 import { Wallet } from 'lucide-vue-next'
 
 const cashierStore = useCashierStore()
+const notificationStore = useNotificationStore()
 
 const initialCashInput = ref<number>(100)
 const actualCashInput = ref<number>(0)
@@ -109,9 +111,9 @@ async function handleOpenSession() {
   try {
     await cashierStore.openSession(initialCashInput.value)
     cashierStore.isCashModalOpen = false
-    alert('Sesión de caja abierta correctamente.')
+    notificationStore.success('Caja abierta', 'Sesión de caja abierta correctamente.')
   } catch (e: any) {
-    alert(e.message || 'Error al abrir caja')
+    notificationStore.error('Error al abrir caja', e.message || 'No se pudo abrir la sesión de caja')
   }
 }
 
@@ -119,9 +121,9 @@ async function handleCloseSession() {
   try {
     await cashierStore.closeSession(actualCashInput.value, notesInput.value)
     cashierStore.isCashModalOpen = false
-    alert('Caja cerrada correctamente.')
+    notificationStore.success('Caja cerrada', 'Caja cerrada y arqueada correctamente.')
   } catch (e: any) {
-    alert(e.message || 'Error al cerrar caja')
+    notificationStore.error('Error al cerrar caja', e.message || 'No se pudo cerrar la caja')
   }
 }
 </script>

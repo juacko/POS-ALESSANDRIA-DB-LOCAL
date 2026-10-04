@@ -61,6 +61,43 @@ function runMigrations(db: Database.Database) {
     if (!itemColNames.includes('is_served')) {
       db.exec("ALTER TABLE order_items ADD COLUMN is_served INTEGER DEFAULT 0")
     }
+
+    // Columnas para cancelación y anulación de órdenes
+    const ordersInfo = db.prepare("PRAGMA table_info(orders)").all() as { name: string }[]
+    const orderColNames = ordersInfo.map(c => c.name)
+    if (!orderColNames.includes('cancellation_reason')) {
+      db.exec("ALTER TABLE orders ADD COLUMN cancellation_reason TEXT")
+    }
+    if (!orderColNames.includes('cancelled_at')) {
+      db.exec("ALTER TABLE orders ADD COLUMN cancelled_at DATETIME")
+    }
+    if (!orderColNames.includes('cancelled_by')) {
+      db.exec("ALTER TABLE orders ADD COLUMN cancelled_by TEXT")
+    }
+
+    // Tabla de auditoría para trazabilidad de cancelaciones y cambios de método de pago
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS order_audit_logs (
+        id TEXT PRIMARY KEY,
+        order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        user_id TEXT,
+        user_name TEXT,
+        details TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
+
+    // Limpieza preventiva de duplicaciones históricas en nombres de mesas
+    try {
+      db.exec(`
+        UPDATE orders SET table_number = REPLACE(table_number, 'Mesa Mesa ', 'Mesa ') WHERE table_number LIKE '%Mesa Mesa %';
+        UPDATE tables SET name = REPLACE(name, 'Mesa Mesa ', 'Mesa ') WHERE name LIKE '%Mesa Mesa %';
+      `)
+    } catch {
+      // Ignorar si no aplica
+    }
   } catch (err) {
     console.error('[Database Migration Error]', err)
   }

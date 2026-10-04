@@ -124,21 +124,22 @@
             <!-- Cabecera de la Card -->
             <div class="p-3.5 border-b border-slate-100 bg-slate-50/70 flex items-start justify-between gap-2">
               <div>
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-black text-slate-900 font-heading">
-                    #{{ ord.order_number }}
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Badge Ubicación (Primero y Destacado) -->
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black shadow-2xs"
+                    :class="ord.table_number === 'RAPIDO'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-indigo-100 text-indigo-900 border border-indigo-200'"
+                  >
+                    <Zap v-if="ord.table_number === 'RAPIDO'" class="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+                    <UtensilsCrossed v-else class="w-3.5 h-3.5 text-indigo-600" />
+                    {{ formatTableDisplay(ord.table_number) }}
                   </span>
 
-                  <!-- Badge Ubicación -->
-                  <span
-                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-black shadow-2xs"
-                    :class="ord.table_number === 'RAPIDO'
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                      : 'bg-indigo-100 text-indigo-800 border border-indigo-200'"
-                  >
-                    <Zap v-if="ord.table_number === 'RAPIDO'" class="w-3 h-3 text-amber-600 fill-amber-600" />
-                    <UtensilsCrossed v-else class="w-3 h-3 text-indigo-600" />
-                    {{ ord.table_number === 'RAPIDO' ? 'Pedido Rápido' : `Mesa ${ord.table_number}` }}
+                  <!-- # de Orden (Secundario en Gris) -->
+                  <span class="text-xs font-bold text-slate-400 font-mono tracking-tight">
+                    #{{ ord.order_number }}
                   </span>
                 </div>
 
@@ -260,6 +261,14 @@
               </div>
 
               <div class="flex items-center gap-1.5">
+                <button
+                  @click="openCancelActiveOrderModal(ord)"
+                  class="p-2 text-rose-400 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
+                  title="Anular Pedido Activo"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+
                 <button
                   @click="openDetailModal(ord)"
                   class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
@@ -385,9 +394,18 @@
               :key="ord.id"
               class="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-sm space-y-2.5"
             >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-black text-slate-900 font-heading">#{{ ord.order_number }}</span>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Mesa de primero -->
+                  <span class="font-black text-slate-900 font-heading flex items-center gap-1 text-sm">
+                    <Zap v-if="ord.table_number === 'RAPIDO'" class="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    <UtensilsCrossed v-else class="w-3.5 h-3.5 text-indigo-500" />
+                    {{ formatTableDisplay(ord.table_number) }}
+                  </span>
+
+                  <!-- # de orden secundario en gris -->
+                  <span class="text-xs font-bold text-slate-400 font-mono">#{{ ord.order_number }}</span>
+
                   <span
                     class="px-2 py-0.5 rounded-full text-[10px] font-bold"
                     :class="ord.status === 'Pagada'
@@ -398,18 +416,19 @@
                   </span>
                 </div>
 
-                <span class="text-base font-black text-indigo-600 font-heading">
+                <span class="text-base font-black text-indigo-600 font-heading shrink-0">
                   S/. {{ ord.total_amount.toFixed(2) }}
                 </span>
               </div>
 
-              <div class="flex items-center justify-between text-xs text-slate-600">
-                <span class="font-bold flex items-center gap-1">
-                  <Zap v-if="ord.table_number === 'RAPIDO'" class="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <UtensilsCrossed v-else class="w-3.5 h-3.5 text-indigo-500" />
-                  {{ ord.table_number === 'RAPIDO' ? 'Pedido Rápido' : `Mesa ${ord.table_number}` }}
-                </span>
-                <span class="text-[11px] text-slate-400">{{ ord.created_at }}</span>
+              <!-- Motivo de cancelación en móvil si aplica -->
+              <div v-if="ord.status === 'Cancelada' && ord.cancellation_reason" class="p-2 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-700">
+                <span class="font-bold">Motivo:</span> {{ ord.cancellation_reason }}
+              </div>
+
+              <div class="flex items-center justify-between text-xs text-slate-500">
+                <span class="truncate">{{ ord.user_name || 'Personal' }}</span>
+                <span class="text-[11px] text-slate-400 shrink-0">{{ ord.created_at }}</span>
               </div>
 
               <!-- Métodos de Pago en Móvil -->
@@ -466,8 +485,8 @@
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase font-extrabold text-slate-400">
-                  <th class="py-3 px-4">Orden #</th>
                   <th class="py-3 px-4">Mesa / Ubicación</th>
+                  <th class="py-3 px-4">Orden #</th>
                   <th class="py-3 px-4">Estado</th>
                   <th class="py-3 px-4">Atendido Por</th>
                   <th class="py-3 px-4">Método(s) de Pago</th>
@@ -479,26 +498,35 @@
               <tbody class="divide-y divide-slate-100 text-sm">
                 <tr v-for="ord in filteredHistoryOrders" :key="ord.id" class="hover:bg-slate-50/80 transition-colors">
                   <td class="py-3 px-4 font-black text-slate-900 font-heading">
-                    #{{ ord.order_number }}
-                  </td>
-
-                  <td class="py-3 px-4 font-bold text-slate-700">
                     <span class="inline-flex items-center gap-1.5">
                       <Zap v-if="ord.table_number === 'RAPIDO'" class="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                       <UtensilsCrossed v-else class="w-3.5 h-3.5 text-indigo-500" />
-                      {{ ord.table_number === 'RAPIDO' ? 'Pedido Rápido' : `Mesa ${ord.table_number}` }}
+                      {{ formatTableDisplay(ord.table_number) }}
                     </span>
                   </td>
 
+                  <td class="py-3 px-4 text-xs font-bold text-slate-400 font-mono">
+                    #{{ ord.order_number }}
+                  </td>
+
                   <td class="py-3 px-4">
-                    <span
-                      class="px-2.5 py-1 rounded-full text-xs font-bold"
-                      :class="ord.status === 'Pagada'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : (ord.status === 'Cancelada' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')"
-                    >
-                      {{ ord.status }}
-                    </span>
+                    <div class="space-y-0.5">
+                      <span
+                        class="px-2.5 py-1 rounded-full text-xs font-bold inline-block"
+                        :class="ord.status === 'Pagada'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : (ord.status === 'Cancelada' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')"
+                      >
+                        {{ ord.status }}
+                      </span>
+                      <p
+                        v-if="ord.cancellation_reason"
+                        class="text-[11px] text-rose-600 font-medium italic truncate max-w-[170px]"
+                        :title="ord.cancellation_reason"
+                      >
+                        {{ ord.cancellation_reason }}
+                      </p>
+                    </div>
                   </td>
 
                   <td class="py-3 px-4 text-xs font-medium text-slate-600">
@@ -564,13 +592,35 @@
                   </td>
 
                   <td class="py-3 px-4 text-right">
-                    <button
-                      @click="openDetailModal(ord)"
-                      class="px-2.5 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1"
-                    >
-                      <Eye class="w-3.5 h-3.5" />
-                      <span>Detalle</span>
-                    </button>
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button
+                        v-if="ord.status === 'Abierta'"
+                        @click="openCancelActiveOrderModal(ord)"
+                        class="px-2 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                        title="Anular Pedido"
+                      >
+                        <Trash2 class="w-3.5 h-3.5" />
+                        <span class="hidden lg:inline">Anular</span>
+                      </button>
+
+                      <button
+                        v-if="ord.status === 'Pagada'"
+                        @click="openChangePaymentModal(ord)"
+                        class="px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                        title="Cambiar Método de Pago"
+                      >
+                        <RefreshCw class="w-3.5 h-3.5" />
+                        <span class="hidden lg:inline">Pago</span>
+                      </button>
+
+                      <button
+                        @click="openDetailModal(ord)"
+                        class="px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors inline-flex items-center gap-1"
+                      >
+                        <Eye class="w-3.5 h-3.5 text-slate-400" />
+                        <span>Detalle</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -586,6 +636,26 @@
       :order="selectedOrderForDetail"
       @close="isDetailModalOpen = false"
       @manage="handleManageOrder"
+      @cancel-order="openCancelActiveOrderModal"
+      @delete-payment="openDeletePaymentModal"
+      @change-payment="openChangePaymentModal"
+    />
+
+    <!-- Modal de Razón Obligatoria (Anular orden o Eliminar pago) -->
+    <OrderReasonModal
+      :is-open="isReasonModalOpen"
+      :mode="reasonModalMode"
+      :order="selectedOrderForReason"
+      @close="isReasonModalOpen = false"
+      @confirm="handleConfirmReason"
+    />
+
+    <!-- Modal Cambiar Método de Pago -->
+    <ChangePaymentMethodModal
+      :is-open="isChangePaymentModalOpen"
+      :order="selectedOrderForChangePayment"
+      @close="isChangePaymentModalOpen = false"
+      @confirm="handleConfirmChangePayment"
     />
   </div>
 </template>
@@ -594,9 +664,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Order, OrderItem } from '@shared/types/order'
+import { formatTableDisplay } from '@shared/utils/formatters'
 import { api } from '@/api'
 import { usePosStore } from '@/stores/posStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import TicketDetailModal from '@/components/orders/TicketDetailModal.vue'
+import OrderReasonModal from '@/components/orders/OrderReasonModal.vue'
+import ChangePaymentMethodModal from '@/components/orders/ChangePaymentMethodModal.vue'
 import {
   Zap,
   UtensilsCrossed,
@@ -610,11 +685,14 @@ import {
   RefreshCw,
   DollarSign,
   CreditCard,
-  Smartphone
+  Smartphone,
+  Trash2
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const posStore = usePosStore()
+const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
 const activeTab = ref<'active' | 'history'>('active')
 const isLoading = ref(false)
@@ -632,6 +710,14 @@ const searchQuery = ref('')
 // Modal Detalle
 const isDetailModalOpen = ref(false)
 const selectedOrderForDetail = ref<Order | null>(null)
+
+// Modales de Motivo Obligatorio y Cambio de Pago
+const isReasonModalOpen = ref(false)
+const reasonModalMode = ref<'cancel_order' | 'delete_payment'>('cancel_order')
+const selectedOrderForReason = ref<Order | null>(null)
+
+const isChangePaymentModalOpen = ref(false)
+const selectedOrderForChangePayment = ref<Order | null>(null)
 
 let unsubscribeSync: (() => void) | undefined
 
@@ -716,7 +802,7 @@ const filteredHistoryOrders = computed(() => {
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.trim().toLowerCase()
       const matchNum = o.order_number?.toString().includes(q)
-      const matchTable = o.table_number.toLowerCase().includes(q)
+      const matchTable = o.table_number.toLowerCase().includes(q) || formatTableDisplay(o.table_number).toLowerCase().includes(q)
       const matchUser = o.user_name?.toLowerCase().includes(q)
       if (!matchNum && !matchTable && !matchUser) return false
     }
@@ -797,5 +883,103 @@ function getElapsedAlertClass(dateStr?: string): string {
   if (diffMinutes >= 20) return 'text-rose-600 font-black'
   if (diffMinutes >= 12) return 'text-amber-600 font-bold'
   return 'text-slate-500'
+}
+
+// ==================== ACCIONES CON MOTIVO OBLIGATORIO ====================
+
+function openCancelActiveOrderModal(ord: Order) {
+  selectedOrderForReason.value = ord
+  reasonModalMode.value = 'cancel_order'
+  isReasonModalOpen.value = true
+}
+
+function openDeletePaymentModal(ord: Order) {
+  selectedOrderForReason.value = ord
+  reasonModalMode.value = 'delete_payment'
+  isReasonModalOpen.value = true
+}
+
+function openChangePaymentModal(ord: Order) {
+  selectedOrderForChangePayment.value = ord
+  isChangePaymentModalOpen.value = true
+}
+
+async function handleConfirmReason(data: { reason: string; destinationStatus: 'Abierta' | 'Cancelada' }) {
+  if (!selectedOrderForReason.value) return
+
+  const ord = selectedOrderForReason.value
+  const user = authStore.currentUser
+
+  try {
+    if (reasonModalMode.value === 'cancel_order') {
+      await api.cancelActiveOrder({
+        orderId: ord.id,
+        reason: data.reason,
+        userId: user?.id,
+        userName: user?.full_name
+      })
+      notificationStore.success('Pedido Anulado', `La comanda ${formatTableDisplay(ord.table_number)} ha sido cancelada.`)
+    } else {
+      await api.deleteOrderPayments({
+        orderId: ord.id,
+        reason: data.reason,
+        destinationStatus: data.destinationStatus,
+        userId: user?.id,
+        userName: user?.full_name
+      })
+      if (data.destinationStatus === 'Abierta') {
+        notificationStore.success('Pago Revertido', `El pago fue eliminado y la orden ${formatTableDisplay(ord.table_number)} ha sido reabierta.`)
+      } else {
+        notificationStore.success('Venta y Pago Anulados', `El pago y la orden ${formatTableDisplay(ord.table_number)} han sido cancelados.`)
+      }
+    }
+
+    isReasonModalOpen.value = false
+
+    // Recargar datos y refrescar modal de detalle si está abierto
+    await loadData()
+    if (isDetailModalOpen.value && selectedOrderForDetail.value?.id === ord.id) {
+      const updated = await api.getOrderById(ord.id)
+      selectedOrderForDetail.value = updated
+    }
+  } catch (err: any) {
+    notificationStore.error('Error en la operación', err.message || 'No se pudo completar la acción.')
+  }
+}
+
+async function handleConfirmChangePayment(data: {
+  payments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]
+  reason: string
+}) {
+  if (!selectedOrderForChangePayment.value) return
+
+  const ord = selectedOrderForChangePayment.value
+  const user = authStore.currentUser
+
+  try {
+    await api.changeOrderPaymentMethod({
+      orderId: ord.id,
+      newPayments: data.payments,
+      reason: data.reason,
+      userId: user?.id,
+      userName: user?.full_name
+    })
+
+    notificationStore.success(
+      'Método de Pago Modificado',
+      `Se actualizaron los métodos de pago para ${formatTableDisplay(ord.table_number)}.`
+    )
+
+    isChangePaymentModalOpen.value = false
+
+    // Recargar datos y refrescar modal de detalle si está abierto
+    await loadData()
+    if (isDetailModalOpen.value && selectedOrderForDetail.value?.id === ord.id) {
+      const updated = await api.getOrderById(ord.id)
+      selectedOrderForDetail.value = updated
+    }
+  } catch (err: any) {
+    notificationStore.error('Error al cambiar método', err.message || 'No se pudo actualizar el método de pago.')
+  }
 }
 </script>

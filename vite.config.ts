@@ -12,6 +12,11 @@ export default defineConfig({
         // Main-Process entry file
         entry: 'src/main/index.ts',
         vite: {
+          resolve: {
+            alias: {
+              '@shared': path.resolve(__dirname, 'shared')
+            }
+          },
           build: {
             outDir: 'dist-electron/main',
             rollupOptions: {

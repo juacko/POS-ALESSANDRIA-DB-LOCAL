@@ -719,6 +719,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useNotificationStore } from '@/stores/notificationStore'
 import {
   BarChart3,
   TrendingUp,
@@ -747,6 +748,7 @@ import {
 } from '@shared/types/report'
 
 // Estado General
+const notificationStore = useNotificationStore()
 const isLoading = ref(true)
 const activeTab = ref<'overview' | 'products' | 'cashier' | 'staff'>('overview')
 const selectedPeriod = ref<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today')
@@ -931,7 +933,7 @@ async function exportToCSV() {
     const orders = await api.getReportsExportData({ startDate: start, endDate: end })
 
     if (!orders || orders.length === 0) {
-      alert('No hay órdenes registradas para exportar en el período seleccionado.')
+      notificationStore.info('Sin registros', 'No hay órdenes registradas para exportar en el período seleccionado.')
       return
     }
 
@@ -977,9 +979,10 @@ async function exportToCSV() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    notificationStore.success('Reporte exportado', 'El archivo CSV se descargó correctamente.')
   } catch (err) {
     console.error('Error al exportar reporte:', err)
-    alert('Ocurrió un error al generar la exportación a Excel/CSV.')
+    notificationStore.error('Error al exportar', 'Ocurrió un error al generar la exportación a Excel/CSV.')
   }
 }
 </script>

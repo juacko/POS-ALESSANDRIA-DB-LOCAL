@@ -75,12 +75,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { usePosStore } from '@/stores/posStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { ModifierGroup, ModifierOption } from '@shared/types/product'
 import { SelectedModifier } from '@shared/types/order'
 import Modal from '@/components/common/Modal.vue'
 import { SlidersHorizontal } from 'lucide-vue-next'
 
 const posStore = usePosStore()
+const notificationStore = useNotificationStore()
 const selectedModifiers = ref<SelectedModifier[]>([])
 
 watch(() => posStore.isModifierModalOpen, (isOpen) => {
@@ -144,7 +146,7 @@ function toggleModifier(group: ModifierGroup, mod: ModifierOption) {
       // Verificar límite
       const countInGroup = selectedModifiers.value.filter(m => m.group_id === group.id).length
       if (group.selection_limit > 0 && countInGroup >= group.selection_limit) {
-        alert(`Solo puedes seleccionar hasta ${group.selection_limit} opciones en ${group.name}.`)
+        notificationStore.warning('Límite alcanzado', `Solo puedes seleccionar hasta ${group.selection_limit} opciones en ${group.name}.`)
         return
       }
       selectedModifiers.value.push({

@@ -558,6 +558,16 @@
       @close="isOptionModalOpen = false"
       @saved="handleOptionSaved"
     />
+
+    <!-- Modal de Confirmación para Eliminaciones -->
+    <ConfirmModal
+      :is-open="isConfirmModalOpen"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :type="confirmType"
+      @confirm="handleConfirmExecution"
+      @cancel="isConfirmModalOpen = false"
+    />
   </div>
 </template>
 
@@ -565,12 +575,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { Product, ModifierGroup, ModifierOption } from '@shared/types/product'
 import { User } from '@shared/types/user'
 import ProductFormModal from '@/components/products/ProductFormModal.vue'
 import UserFormModal from '@/components/users/UserFormModal.vue'
 import ModifierGroupModal from '@/components/products/ModifierGroupModal.vue'
 import ModifierOptionModal from '@/components/products/ModifierOptionModal.vue'
+import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import {
   Settings,
   Plus,
@@ -594,6 +606,34 @@ import {
 
 const productStore = useProductStore()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
+
+// Estado para ConfirmModal
+const isConfirmModalOpen = ref(false)
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+const confirmType = ref<'danger' | 'warning' | 'info'>('danger')
+const confirmAction = ref<(() => Promise<void>) | null>(null)
+
+function openConfirm(options: {
+  title: string
+  message: string
+  type?: 'danger' | 'warning' | 'info'
+  onConfirm: () => Promise<void>
+}) {
+  confirmTitle.value = options.title
+  confirmMessage.value = options.message
+  confirmType.value = options.type || 'danger'
+  confirmAction.value = options.onConfirm
+  isConfirmModalOpen.value = true
+}
+
+async function handleConfirmExecution() {
+  if (confirmAction.value) {
+    await confirmAction.value()
+  }
+  isConfirmModalOpen.value = false
+}
 
 const activeTab = ref<'catalog' | 'modifiers' | 'users'>('catalog')
 
@@ -678,23 +718,30 @@ async function handleDuplicateGroup(group: ModifierGroup) {
 
   try {
     await productStore.duplicateModifierGroup(group.id, newName.trim())
+    notificationStore.success('Grupo duplicado', `Se creó "${newName.trim()}".`)
   } catch (e: any) {
-    alert(e.message || 'Error al duplicar el grupo')
+    notificationStore.error('Error al duplicar grupo', e.message || 'No se pudo duplicar')
   }
 }
 
 async function handleDeleteGroup(group: ModifierGroup) {
   const confirmMsg = group.product_count && group.product_count > 0
     ? `El grupo "${group.name}" está asignado a ${group.product_count} producto(s). ¿Estás seguro de que deseas eliminarlo? Se desvinculará automáticamente de dichos productos.`
-    : `¿Estás seguro de eliminar el grupo "${group.name}"?`
+    : `¿Estás seguro de eliminar el grupo "${group.name}"? Esta acción no se puede deshacer.`
 
-  if (!confirm(confirmMsg)) return
-
-  try {
-    await productStore.deleteModifierGroup(group.id)
-  } catch (e: any) {
-    alert(e.message || 'Error al eliminar el grupo')
-  }
+  openConfirm({
+    title: '¿Eliminar Grupo de Modificadores?',
+    message: confirmMsg,
+    type: 'danger',
+    onConfirm: async () => {
+      try {
+        await productStore.deleteModifierGroup(group.id)
+        notificationStore.success('Grupo eliminado', `Se eliminó el grupo "${group.name}".`)
+      } catch (e: any) {
+        notificationStore.error('Error al eliminar grupo', e.message || 'No se pudo eliminar')
+      }
+    }
+  })
 }
 
 function openAddOptionModal(group: ModifierGroup) {
@@ -714,19 +761,26 @@ function openEditOptionModal(group: ModifierGroup, option: ModifierOption) {
 async function handleSetDefaultOption(groupId: string, optionId: string) {
   try {
     await productStore.setDefaultModifierOption(groupId, optionId)
+    notificationStore.success('Opción predeterminada', 'Se actualizó la opción por defecto.')
   } catch (e: any) {
-    alert(e.message || 'Error al fijar opción predeterminada')
+    notificationStore.error('Error', e.message || 'Error al fijar opción predeterminada')
   }
 }
 
 async function handleDeleteOption(option: ModifierOption) {
-  if (!confirm(`¿Estás seguro de eliminar la opción "${option.name}"?`)) return
-
-  try {
-    await productStore.deleteModifierOption(option.id)
-  } catch (e: any) {
-    alert(e.message || 'Error al eliminar la opción')
-  }
+  openConfirm({
+    title: '¿Eliminar Opción / Sabor?',
+    message: `¿Estás seguro de que deseas eliminar la opción "${option.name}"? Esta acción no se puede deshacer.`,
+    type: 'danger',
+    onConfirm: async () => {
+      try {
+        await productStore.deleteModifierOption(option.id)
+        notificationStore.success('Opción eliminada', `Se eliminó "${option.name}".`)
+      } catch (e: any) {
+        notificationStore.error('Error al eliminar opción', e.message || 'No se pudo eliminar')
+      }
+    }
+  })
 }
 
 async function handleGroupSaved() {
@@ -752,8 +806,12 @@ async function handleToggleUser(user: User) {
   try {
     const nextState = user.active === 1 ? 0 : 1
     await authStore.toggleUserActive(user.id, nextState)
+    notificationStore.success(
+      'Estado actualizado',
+      `Colaborador ${user.full_name} ${nextState === 1 ? 'activado' : 'desactivado'}.`
+    )
   } catch (err: any) {
-    alert(err.message || 'Error al cambiar estado del colaborador')
+    notificationStore.error('Error', err.message || 'Error al cambiar estado del colaborador')
   }
 }
 

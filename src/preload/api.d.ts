@@ -84,6 +84,9 @@ export interface POSAPI {
   getActiveOrders: () => Promise<Order[]>
   toggleItemServed: (data: { itemId: string }) => Promise<boolean>
   markAllOrderItemsServed: (data: { orderId: string }) => Promise<boolean>
+  cancelActiveOrder: (data: { orderId: string; reason: string; userId?: string; userName?: string }) => Promise<Order>
+  deleteOrderPayments: (data: { orderId: string; reason: string; destinationStatus: 'Abierta' | 'Cancelada'; userId?: string; userName?: string }) => Promise<Order>
+  changeOrderPaymentMethod: (data: { orderId: string; newPayments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]; reason: string; userId?: string; userName?: string }) => Promise<Order>
 
   // Red y Servidor Móvil
   getNetworkInfo: () => Promise<NetworkInfoResponse>

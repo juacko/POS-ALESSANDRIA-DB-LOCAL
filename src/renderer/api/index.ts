@@ -313,6 +313,48 @@ export const api: POSAPI = {
     const json = await res.json()
     return json.success
   },
+  cancelActiveOrder: async (data: { orderId: string; reason: string; userId?: string; userName?: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.cancelActiveOrder(plainData)
+    const res = await fetch('/api/orders/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al anular el pedido')
+    }
+    return res.json()
+  },
+  deleteOrderPayments: async (data: { orderId: string; reason: string; destinationStatus: 'Abierta' | 'Cancelada'; userId?: string; userName?: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.deleteOrderPayments(plainData)
+    const res = await fetch('/api/orders/delete-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al eliminar pagos del pedido')
+    }
+    return res.json()
+  },
+  changeOrderPaymentMethod: async (data: { orderId: string; newPayments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]; reason: string; userId?: string; userName?: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.changeOrderPaymentMethod(plainData)
+    const res = await fetch('/api/orders/change-payment-method', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al cambiar método de pago')
+    }
+    return res.json()
+  },
 
   // Red
   getNetworkInfo: async () => {

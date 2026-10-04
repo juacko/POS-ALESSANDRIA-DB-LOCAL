@@ -84,10 +84,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useCashierStore } from '@/stores/cashierStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import Modal from '@/components/common/Modal.vue'
 import { ArrowUpDown, TrendingUp, TrendingDown } from 'lucide-vue-next'
 
 const cashierStore = useCashierStore()
+const notificationStore = useNotificationStore()
 
 const typeInput = ref<'Ingreso' | 'Egreso'>('Ingreso')
 const amountInput = ref<number>(0)
@@ -99,9 +101,9 @@ async function handleSaveMovement() {
     cashierStore.isMovementModalOpen = false
     amountInput.value = 0
     descriptionInput.value = ''
-    alert('Movimiento de caja registrado.')
+    notificationStore.success('Movimiento registrado', 'El movimiento de caja se guardó correctamente.')
   } catch (e: any) {
-    alert(e.message || 'Error al guardar movimiento')
+    notificationStore.error('Error al guardar movimiento', e.message || 'No se pudo guardar el movimiento')
   }
 }
 </script>

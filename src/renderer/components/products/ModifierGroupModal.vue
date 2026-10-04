@@ -139,6 +139,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useProductStore } from '@/stores/productStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { ModifierGroup } from '@shared/types/product'
 import Modal from '@/components/common/Modal.vue'
 import { SlidersHorizontal } from 'lucide-vue-next'
@@ -151,6 +152,7 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'saved'])
 
 const productStore = useProductStore()
+const notificationStore = useNotificationStore()
 const isEdit = ref(false)
 const isSubmitting = ref(false)
 const nameInput = ref('')
@@ -195,10 +197,14 @@ async function handleSave() {
         selection_limit: limit
       })
     }
+    notificationStore.success(
+      isEdit.value ? 'Grupo actualizado' : 'Grupo creado',
+      `"${nameInput.value.trim()}" se guardó correctamente.`
+    )
     emit('saved')
     emit('close')
   } catch (e: any) {
-    alert(e.message || 'Error al guardar el grupo')
+    notificationStore.error('Error al guardar grupo', e.message || 'No se pudo guardar el grupo')
   } finally {
     isSubmitting.value = false
   }

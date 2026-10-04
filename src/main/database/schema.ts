@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS orders (
     user_id TEXT REFERENCES users(id),
     status TEXT DEFAULT 'Abierta' CHECK(status IN ('Abierta', 'Pagada', 'Cancelada')),
     total_amount REAL DEFAULT 0.00,
+    cancellation_reason TEXT,
+    cancelled_at DATETIME,
+    cancelled_by TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     closed_at DATETIME
 );
@@ -117,6 +120,18 @@ CREATE TABLE IF NOT EXISTS payments (
     session_id TEXT REFERENCES cashier_sessions(id),
     payment_method TEXT NOT NULL CHECK(payment_method IN ('Efectivo', 'Tarjeta', 'Yape/Plin')),
     amount REAL NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Registro de Auditoría de Órdenes y Pagos
+CREATE TABLE IF NOT EXISTS order_audit_logs (
+    id TEXT PRIMARY KEY,
+    order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    user_id TEXT,
+    user_name TEXT,
+    details TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 `;

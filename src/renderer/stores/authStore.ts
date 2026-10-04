@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { User, UserRole } from '@shared/types/user'
 import { api } from '@/api'
+import { useNotificationStore } from './notificationStore'
 
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>({
@@ -53,7 +54,8 @@ export const useAuthStore = defineStore('auth', () => {
       currentUser.value = user
       return true
     } catch (e: any) {
-      alert(e.message || 'Error al iniciar sesión')
+      const notificationStore = useNotificationStore()
+      notificationStore.error('Error de autenticación', e.message || 'PIN o usuario incorrecto')
       return false
     }
   }

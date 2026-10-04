@@ -305,6 +305,47 @@ export function startLocalServer() {
           return
         }
 
+        if (pathname === '/api/orders/cancel' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.cancelActiveOrder(data.orderId, data.reason, data.userId, data.userName)
+          notifySync('tables')
+          notifySync('orders')
+          res.end(JSON.stringify(order))
+          return
+        }
+
+        if (pathname === '/api/orders/delete-payment' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.deleteOrderPayments(
+            data.orderId,
+            data.reason,
+            data.destinationStatus,
+            data.userId,
+            data.userName
+          )
+          notifySync('tables')
+          notifySync('orders')
+          notifySync('cashier')
+          res.end(JSON.stringify(order))
+          return
+        }
+
+        if (pathname === '/api/orders/change-payment-method' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.changeOrderPaymentMethod(
+            data.orderId,
+            data.newPayments,
+            data.reason,
+            data.userId,
+            data.userName
+          )
+          notifySync('tables')
+          notifySync('orders')
+          notifySync('cashier')
+          res.end(JSON.stringify(order))
+          return
+        }
+
         if (pathname === '/api/cashier/active-session' && req.method === 'GET') {
           const session = CashierRepository.getActiveSession()
           res.end(JSON.stringify(session))

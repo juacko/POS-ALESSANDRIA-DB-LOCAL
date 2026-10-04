@@ -23,7 +23,7 @@
         </div>
         <div>
           <h2 class="text-base font-bold text-slate-900 font-heading">
-            {{ posStore.activeTableId ? `Mesa: ${posStore.activeTableNumber}` : 'Pedido Rápido ⚡' }}
+            {{ posStore.activeTableId ? formatTableDisplay(posStore.activeTableNumber) : 'Pedido Rápido ⚡' }}
           </h2>
           <p class="text-xs text-slate-400 font-medium">
             {{ posStore.itemsCount }} {{ posStore.itemsCount === 1 ? 'producto' : 'productos' }} en cuenta
@@ -43,10 +43,21 @@
     <!-- Banner informativo de Pedido Activo en Mesa -->
     <div
       v-if="posStore.activeTableId && posStore.currentOrder"
-      class="px-4 py-2 bg-amber-50 border-b border-amber-200/70 flex items-center gap-2 text-xs text-amber-900 font-medium"
+      class="px-4 py-2 bg-amber-50 border-b border-amber-200/70 flex items-center justify-between gap-2 text-xs text-amber-900 font-medium"
     >
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-      <span class="truncate">Pedido activo en mesa #{{ posStore.currentOrder.id.slice(-4) }}</span>
+      <div class="flex items-center gap-2 truncate">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+        <span class="truncate">Pedido activo en mesa #{{ posStore.currentOrder.order_number || posStore.currentOrder.id.slice(-4) }}</span>
+      </div>
+
+      <button
+        type="button"
+        @click="isCancelOrderModalOpen = true"
+        class="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-100/60 px-2 py-0.5 rounded-md transition-colors shrink-0"
+        title="Anular comanda activa y liberar mesa"
+      >
+        Anular Comanda
+      </button>
     </div>
 
     <!-- Lista de Ítems -->
@@ -184,13 +195,38 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Personalizado de Comanda Enviada a Mesa -->
+    <OrderSentModal
+      :is-open="isOrderSentModalOpen"
+      :table-number="lastSavedTableNumber"
+      :items-count="lastSavedItemsCount"
+      @go-to-tables="handleGoToTables"
+      @stay="handleStayInTable"
+    />
+
+    <!-- Modal de Anulación de Comanda con Motivo Obligatorio -->
+    <OrderReasonModal
+      :is-open="isCancelOrderModalOpen"
+      mode="cancel_order"
+      :order="posStore.currentOrder"
+      @close="isCancelOrderModalOpen = false"
+      @confirm="handleConfirmCancelOrder"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { formatTableDisplay } from '@shared/utils/formatters'
+import { api } from '@/api'
 import { usePosStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useTableStore } from '@/stores/tableStore'
+import { useNotificationStore } from '@/stores/notificationStore'
+import OrderSentModal from '@/components/pos/OrderSentModal.vue'
+import OrderReasonModal from '@/components/orders/OrderReasonModal.vue'
 import { UtensilsCrossed, Zap, ShoppingBag, Trash2, Send, CreditCard, ArrowLeft, Plus, PlusCircle } from 'lucide-vue-next'
 
 defineProps<{
@@ -199,16 +235,62 @@ defineProps<{
 
 const emit = defineEmits(['closeMobile'])
 
+const router = useRouter()
 const posStore = usePosStore()
 const authStore = useAuthStore()
+const tableStore = useTableStore()
+const notificationStore = useNotificationStore()
+
+const isOrderSentModalOpen = ref(false)
+const lastSavedTableNumber = ref('')
+const lastSavedItemsCount = ref(0)
+const isCancelOrderModalOpen = ref(false)
 
 async function handleSaveOrder() {
   try {
+    lastSavedTableNumber.value = posStore.activeTableNumber
+    lastSavedItemsCount.value = posStore.itemsCount
     await posStore.saveOrderToTable()
-    alert('Pedido guardado correctamente en la mesa.')
-    emit('closeMobile')
+    isOrderSentModalOpen.value = true
   } catch (e: any) {
-    alert(e.message || 'Error al guardar pedido')
+    notificationStore.error('Error al guardar pedido', e.message || 'No se pudo guardar la orden')
   }
+}
+
+async function handleConfirmCancelOrder(data: { reason: string }) {
+  if (!posStore.currentOrder) return
+
+  try {
+    await api.cancelActiveOrder({
+      orderId: posStore.currentOrder.id,
+      reason: data.reason,
+      userId: authStore.currentUser?.id,
+      userName: authStore.currentUser?.full_name
+    })
+
+    notificationStore.success(
+      'Pedido Anulado',
+      `La comanda de ${formatTableDisplay(posStore.activeTableNumber)} ha sido cancelada y la mesa liberada.`
+    )
+
+    isCancelOrderModalOpen.value = false
+    posStore.clearCart()
+    await tableStore.loadTables()
+    emit('closeMobile')
+    router.push('/tables')
+  } catch (e: any) {
+    notificationStore.error('Error al anular comanda', e.message || 'No se pudo anular la orden activa')
+  }
+}
+
+function handleGoToTables() {
+  isOrderSentModalOpen.value = false
+  emit('closeMobile')
+  router.push('/tables')
+}
+
+function handleStayInTable() {
+  isOrderSentModalOpen.value = false
+  emit('closeMobile')
 }
 </script>

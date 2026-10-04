@@ -1,5 +1,5 @@
 import { getDatabase } from '../database/connection'
-import { Order, OrderItem } from '@shared/types/order'
+import { Order, OrderItem, OrderAuditLog } from '@shared/types/order'
 import { Payment } from '@shared/types/cashier'
 import { TableRepository } from './TableRepository'
 
@@ -22,10 +22,18 @@ export class OrderRepository {
 
     const payments = db.prepare('SELECT * FROM payments WHERE order_id = ?').all(id) as Payment[]
 
+    let auditLogs: OrderAuditLog[] = []
+    try {
+      auditLogs = db.prepare('SELECT * FROM order_audit_logs WHERE order_id = ? ORDER BY timestamp DESC').all(id) as OrderAuditLog[]
+    } catch {
+      // Si la tabla aún no fue creada
+    }
+
     return {
       ...order,
       items: parsedItems,
-      payments
+      payments,
+      audit_logs: auditLogs
     }
   }
 
@@ -182,4 +190,226 @@ export class OrderRepository {
 
     return orders.map(o => this.getOrderById(o.id)!).filter(Boolean)
   }
+
+  /**
+   * Anula un pedido activo (Abierta) registrando el motivo obligatorio
+   */
+  static cancelActiveOrder(orderId: string, reason: string, userId?: string, userName?: string): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Abierta') throw new Error('Solo se pueden anular pedidos que se encuentren activos (Abiertos)')
+
+    const trimmedReason = reason?.trim()
+    if (!trimmedReason) throw new Error('El motivo de anulación es obligatorio')
+
+    // Actualizar estado de la orden
+    db.prepare(`
+      UPDATE orders 
+      SET status = 'Cancelada', 
+          cancellation_reason = ?, 
+          cancelled_at = CURRENT_TIMESTAMP, 
+          cancelled_by = ? 
+      WHERE id = ?
+    `).run(trimmedReason, userName || userId || 'Personal', orderId)
+
+    // Si pertenecía a una mesa, liberar la mesa si no hay otras órdenes abiertas
+    if (order.table_id) {
+      const otherActive = db.prepare(`
+        SELECT COUNT(*) as count FROM orders WHERE table_id = ? AND status = 'Abierta' AND id != ?
+      `).get(order.table_id, orderId) as { count: number }
+
+      if (otherActive.count === 0) {
+        TableRepository.updateTableStatus(order.table_id, 'Disponible')
+      }
+    }
+
+    // Registrar en auditoría
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    try {
+      db.prepare(`
+        INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+        VALUES (?, ?, 'CANCEL_ACTIVE_ORDER', ?, ?, ?, ?)
+      `).run(
+        logId,
+        orderId,
+        trimmedReason,
+        userId || null,
+        userName || 'Personal',
+        JSON.stringify({ total_amount: order.total_amount, table: order.table_number, itemsCount: order.items?.length || 0 })
+      )
+    } catch (e) {
+      console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+    }
+
+    return this.getOrderById(orderId)!
+  }
+
+  /**
+   * Elimina/revierte los pagos de una orden pagada registrando el motivo obligatorio
+   * Permite reabrir la orden a 'Abierta' o cancelarla definitivamente a 'Cancelada'
+   */
+  static deleteOrderPayments(
+    orderId: string,
+    reason: string,
+    destinationStatus: 'Abierta' | 'Cancelada',
+    userId?: string,
+    userName?: string
+  ): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Pagada') throw new Error('Solo se pueden eliminar o revertir pagos de órdenes pagadas')
+
+    const trimmedReason = reason?.trim()
+    if (!trimmedReason) throw new Error('El motivo de eliminación de pago es obligatorio')
+
+    const currentPayments = order.payments || []
+
+    // Eliminar pagos registrados en la tabla payments
+    db.prepare('DELETE FROM payments WHERE order_id = ?').run(orderId)
+
+    if (destinationStatus === 'Abierta') {
+      // Reabrir orden: vuelve a estar activa
+      db.prepare(`
+        UPDATE orders 
+        SET status = 'Abierta', 
+            closed_at = NULL,
+            cancellation_reason = NULL,
+            cancelled_at = NULL,
+            cancelled_by = NULL
+        WHERE id = ?
+      `).run(orderId)
+
+      // Si tiene mesa asignada, volver a marcar mesa como Ocupada
+      if (order.table_id) {
+        TableRepository.updateTableStatus(order.table_id, 'Ocupada')
+      }
+
+      // Registrar en auditoría
+      const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      try {
+        db.prepare(`
+          INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+          VALUES (?, ?, 'REVERT_PAYMENT', ?, ?, ?, ?)
+        `).run(
+          logId,
+          orderId,
+          trimmedReason,
+          userId || null,
+          userName || 'Personal',
+          JSON.stringify({ removedPayments: currentPayments, destination: 'Abierta' })
+        )
+      } catch (e) {
+        console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+      }
+    } else {
+      // Cancelar orden definitivamente
+      db.prepare(`
+        UPDATE orders 
+        SET status = 'Cancelada', 
+            cancellation_reason = ?, 
+            cancelled_at = CURRENT_TIMESTAMP, 
+            cancelled_by = ? 
+        WHERE id = ?
+      `).run(trimmedReason, userName || userId || 'Personal', orderId)
+
+      // Si la mesa estaba ocupada, verificar y liberar
+      if (order.table_id) {
+        const otherActive = db.prepare(`
+          SELECT COUNT(*) as count FROM orders WHERE table_id = ? AND status = 'Abierta' AND id != ?
+        `).get(order.table_id, orderId) as { count: number }
+
+        if (otherActive.count === 0) {
+          TableRepository.updateTableStatus(order.table_id, 'Disponible')
+        }
+      }
+
+      // Registrar en auditoría
+      const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      try {
+        db.prepare(`
+          INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+          VALUES (?, ?, 'CANCEL_PAID_ORDER', ?, ?, ?, ?)
+        `).run(
+          logId,
+          orderId,
+          trimmedReason,
+          userId || null,
+          userName || 'Personal',
+          JSON.stringify({ removedPayments: currentPayments, destination: 'Cancelada' })
+        )
+      } catch (e) {
+        console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+      }
+    }
+
+    return this.getOrderById(orderId)!
+  }
+
+  /**
+   * Cambia los métodos de pago de una orden pagada registrando el motivo obligatorio
+   */
+  static changeOrderPaymentMethod(
+    orderId: string,
+    newPayments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[],
+    reason: string,
+    userId?: string,
+    userName?: string
+  ): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Pagada') throw new Error('Solo se puede modificar el método de pago de órdenes pagadas')
+
+    const trimmedReason = reason?.trim()
+    if (!trimmedReason) throw new Error('El motivo de modificación de pago es obligatorio')
+
+    if (!newPayments || newPayments.length === 0) {
+      throw new Error('Debe especificar al menos un método de pago')
+    }
+
+    const newTotal = newPayments.reduce((sum, p) => sum + p.amount, 0)
+    if (Math.abs(newTotal - order.total_amount) > 0.05) {
+      throw new Error(`La suma de los pagos (S/. ${newTotal.toFixed(2)}) no coincide con el total de la orden (S/. ${order.total_amount.toFixed(2)})`)
+    }
+
+    const oldPayments = order.payments || []
+    const existingSessionId = oldPayments[0]?.session_id || order.cashier_session_id
+
+    // Eliminar pagos anteriores
+    db.prepare('DELETE FROM payments WHERE order_id = ?').run(orderId)
+
+    // Insertar nuevos pagos
+    const insertPayment = db.prepare(`
+      INSERT INTO payments (id, order_id, session_id, payment_method, amount)
+      VALUES (?, ?, ?, ?, ?)
+    `)
+
+    for (const p of newPayments) {
+      const pId = `pay-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+      insertPayment.run(pId, orderId, existingSessionId, p.method, p.amount)
+    }
+
+    // Registrar en auditoría
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    try {
+      db.prepare(`
+        INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+        VALUES (?, ?, 'CHANGE_PAYMENT_METHOD', ?, ?, ?, ?)
+      `).run(
+        logId,
+        orderId,
+        trimmedReason,
+        userId || null,
+        userName || 'Personal',
+        JSON.stringify({ previousPayments: oldPayments, newPayments })
+      )
+    } catch (e) {
+      console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+    }
+
+    return this.getOrderById(orderId)!
+  }
 }
+

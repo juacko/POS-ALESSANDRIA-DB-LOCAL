@@ -10,6 +10,9 @@
 
     <!-- Navigation Flotante Inferior (Visible en operaciones principales) -->
     <BottomNavBar v-if="authStore.currentUser && route.name !== 'login'" />
+
+    <!-- Notificaciones Toast Globales -->
+    <NotificationToast />
   </div>
 </template>
 
@@ -20,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useCashierStore } from '@/stores/cashierStore'
 import PosTopBar from '@/components/common/PosTopBar.vue'
 import BottomNavBar from '@/components/common/BottomNavBar.vue'
+import NotificationToast from '@/components/common/NotificationToast.vue'
 import { initRealtimeSync } from '@/services/syncService'
 
 const route = useRoute()
