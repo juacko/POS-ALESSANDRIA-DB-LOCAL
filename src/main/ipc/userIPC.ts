@@ -27,6 +27,21 @@ export function registerUserIPC() {
     return user
   })
 
+  // Validar PIN de Administrador (para autorizaciones de supervisor en acciones sensibles)
+  ipcMain.handle('users:verifyAdminPin', (_, data: { pin: string }) => {
+    const db = getDatabase()
+    const pin = data.pin?.trim()
+    if (!pin) throw new Error('El PIN es requerido.')
+
+    const admin = db.prepare("SELECT id, username, full_name, role, active FROM users WHERE password_hash = ? AND role = 'Administrador' AND active = 1")
+      .get(pin) as User | undefined
+
+    if (!admin) {
+      throw new Error('PIN incorrecto o el usuario no cuenta con privilegios de Administrador.')
+    }
+    return admin
+  })
+
   // Crear nuevo colaborador
   ipcMain.handle('users:create', (_, data: {
     username: string

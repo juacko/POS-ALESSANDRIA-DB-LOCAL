@@ -15,6 +15,7 @@ const api: POSAPI = {
   getUsers: () => ipcRenderer.invoke('users:getUsers'),
   getAllUsers: () => ipcRenderer.invoke('users:getAll'),
   login: (data) => ipcRenderer.invoke('users:login', toPlain(data)),
+  verifyAdminPin: (data) => ipcRenderer.invoke('users:verifyAdminPin', toPlain(data)),
   createUser: (data) => ipcRenderer.invoke('users:create', toPlain(data)),
   updateUser: (data) => ipcRenderer.invoke('users:update', toPlain(data)),
   toggleUserActive: (data) => ipcRenderer.invoke('users:toggleActive', toPlain(data)),
@@ -62,6 +63,9 @@ const api: POSAPI = {
   toggleItemServed: (data) => ipcRenderer.invoke('orders:toggleItemServed', toPlain(data)),
   markAllOrderItemsServed: (data) => ipcRenderer.invoke('orders:markAllServed', toPlain(data)),
   cancelActiveOrder: (data) => ipcRenderer.invoke('orders:cancelActiveOrder', toPlain(data)),
+  deleteOrderItem: (data) => ipcRenderer.invoke('orders:deleteOrderItem', toPlain(data)),
+  updateOrderItemPrice: (data) => ipcRenderer.invoke('orders:updateOrderItemPrice', toPlain(data)),
+  updateOrderItemModifiers: (data) => ipcRenderer.invoke('orders:updateOrderItemModifiers', toPlain(data)),
   deleteOrderPayments: (data) => ipcRenderer.invoke('orders:deleteOrderPayments', toPlain(data)),
   changeOrderPaymentMethod: (data) => ipcRenderer.invoke('orders:changeOrderPaymentMethod', toPlain(data)),
 

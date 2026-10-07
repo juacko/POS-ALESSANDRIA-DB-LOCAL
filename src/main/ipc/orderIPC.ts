@@ -98,4 +98,45 @@ export function registerOrderIPC() {
     notifySync('cashier')
     return order
   })
+
+  ipcMain.handle('orders:deleteOrderItem', (_, data: {
+    orderId: string
+    itemId: string
+    reason: string
+    userId?: string
+    userName?: string
+    authorizedBy?: string
+  }) => {
+    const order = OrderRepository.deleteOrderItem(data)
+    notifySync('tables')
+    notifySync('orders')
+    return order
+  })
+
+  ipcMain.handle('orders:updateOrderItemPrice', (_, data: {
+    orderId: string
+    itemId: string
+    newUnitPrice: number
+    reason: string
+    userId?: string
+    userName?: string
+    authorizedBy?: string
+  }) => {
+    const order = OrderRepository.updateOrderItemPrice(data)
+    notifySync('tables')
+    notifySync('orders')
+    return order
+  })
+
+  ipcMain.handle('orders:updateOrderItemModifiers', (_, data: {
+    orderId: string
+    itemId: string
+    selectedModifiers: any[]
+    newUnitPrice?: number
+  }) => {
+    const order = OrderRepository.updateOrderItemModifiers(data)
+    notifySync('tables')
+    notifySync('orders')
+    return order
+  })
 }

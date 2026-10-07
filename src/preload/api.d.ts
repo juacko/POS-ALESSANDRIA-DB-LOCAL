@@ -31,6 +31,7 @@ export interface POSAPI {
   getUsers: () => Promise<User[]>
   getAllUsers: () => Promise<User[]>
   login: (data: { username: string; pin: string }) => Promise<User>
+  verifyAdminPin: (data: { pin: string }) => Promise<User>
   createUser: (data: { username: string; fullName: string; role: UserRole; pin: string }) => Promise<User>
   updateUser: (data: { id: string; fullName: string; role: UserRole; pin?: string }) => Promise<User>
   toggleUserActive: (data: { id: string; active: number }) => Promise<boolean>
@@ -88,6 +89,9 @@ export interface POSAPI {
   toggleItemServed: (data: { itemId: string }) => Promise<boolean>
   markAllOrderItemsServed: (data: { orderId: string }) => Promise<boolean>
   cancelActiveOrder: (data: { orderId: string; reason: string; userId?: string; userName?: string }) => Promise<Order>
+  deleteOrderItem: (data: { orderId: string; itemId: string; reason: string; userId?: string; userName?: string; authorizedBy?: string }) => Promise<Order>
+  updateOrderItemPrice: (data: { orderId: string; itemId: string; newUnitPrice: number; reason: string; userId?: string; userName?: string; authorizedBy?: string }) => Promise<Order>
+  updateOrderItemModifiers: (data: { orderId: string; itemId: string; selectedModifiers: any[]; newUnitPrice?: number }) => Promise<Order>
   deleteOrderPayments: (data: { orderId: string; reason: string; destinationStatus: 'Abierta' | 'Cancelada'; userId?: string; userName?: string }) => Promise<Order>
   changeOrderPaymentMethod: (data: { orderId: string; newPayments: { method: 'Efectivo' | 'Tarjeta' | 'Yape/Plin'; amount: number }[]; reason: string; userId?: string; userName?: string }) => Promise<Order>
 

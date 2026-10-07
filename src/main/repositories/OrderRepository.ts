@@ -415,5 +415,202 @@ export class OrderRepository {
 
     return this.getOrderById(orderId)!
   }
+
+  /**
+   * Elimina un producto específico de un pedido activo (Abierta) registrando motivo y auditoría
+   */
+  static deleteOrderItem(data: {
+    orderId: string
+    itemId: string
+    reason: string
+    userId?: string
+    userName?: string
+    authorizedBy?: string
+  }): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(data.orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Abierta') throw new Error('Solo se pueden eliminar ítems de pedidos activos (Abiertos)')
+
+    const trimmedReason = data.reason?.trim()
+    if (!trimmedReason) throw new Error('El motivo de eliminación del producto es obligatorio')
+
+    const itemToDelete = order.items?.find(i => i.id === data.itemId)
+    if (!itemToDelete) throw new Error('El producto no existe en esta comanda')
+
+    // Eliminar el ítem
+    db.prepare('DELETE FROM order_items WHERE id = ? AND order_id = ?').run(data.itemId, data.orderId)
+
+    // Recalcular ítems restantes y total
+    const remainingItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(data.orderId) as OrderItem[]
+    const newTotal = remainingItems.reduce((sum, it) => sum + it.final_price, 0)
+
+    if (remainingItems.length === 0) {
+      // Si ya no quedan productos, anular la comanda y liberar mesa
+      db.prepare(`
+        UPDATE orders 
+        SET status = 'Cancelada', 
+            total_amount = 0,
+            cancellation_reason = ?, 
+            cancelled_at = CURRENT_TIMESTAMP, 
+            cancelled_by = ? 
+        WHERE id = ?
+      `).run(`Todos los ítems fueron eliminados: ${trimmedReason}`, data.userName || data.userId || 'Personal', data.orderId)
+
+      if (order.table_id) {
+        const otherActive = db.prepare(`
+          SELECT COUNT(*) as count FROM orders WHERE table_id = ? AND status = 'Abierta' AND id != ?
+        `).get(order.table_id, data.orderId) as { count: number }
+
+        if (otherActive.count === 0) {
+          TableRepository.updateTableStatus(order.table_id, 'Disponible')
+        }
+      }
+    } else {
+      // Actualizar monto total de la orden
+      db.prepare('UPDATE orders SET total_amount = ? WHERE id = ?').run(newTotal, data.orderId)
+    }
+
+    // Registrar en auditoría
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    try {
+      db.prepare(`
+        INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+        VALUES (?, ?, 'DELETE_ORDER_ITEM', ?, ?, ?, ?)
+      `).run(
+        logId,
+        data.orderId,
+        trimmedReason,
+        data.userId || null,
+        data.userName || 'Personal',
+        JSON.stringify({
+          deletedItem: {
+            id: itemToDelete.id,
+            name: itemToDelete.product_name,
+            quantity: itemToDelete.quantity,
+            unit_price: itemToDelete.unit_price,
+            final_price: itemToDelete.final_price,
+            modifiers: itemToDelete.selected_modifiers || []
+          },
+          authorizedBy: data.authorizedBy || data.userName || 'Administrador',
+          previousTotal: order.total_amount,
+          newTotal
+        })
+      )
+    } catch (e) {
+      console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+    }
+
+    return this.getOrderById(data.orderId)!
+  }
+
+  /**
+   * Modifica el precio de un ítem en una orden activa (descuento / cortesía / precio libre)
+   */
+  static updateOrderItemPrice(data: {
+    orderId: string
+    itemId: string
+    newUnitPrice: number
+    reason: string
+    userId?: string
+    userName?: string
+    authorizedBy?: string
+  }): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(data.orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Abierta') throw new Error('Solo se puede modificar el precio de pedidos activos (Abiertos)')
+
+    const trimmedReason = data.reason?.trim()
+    if (!trimmedReason) throw new Error('El motivo de modificación de precio es obligatorio')
+
+    if (data.newUnitPrice < 0) {
+      throw new Error('El precio unitario no puede ser negativo')
+    }
+
+    const itemToUpdate = order.items?.find(i => i.id === data.itemId)
+    if (!itemToUpdate) throw new Error('El producto no existe en esta comanda')
+
+    const newFinalPrice = data.newUnitPrice * itemToUpdate.quantity
+
+    // Actualizar precio en order_items
+    db.prepare(`
+      UPDATE order_items
+      SET unit_price = ?, final_price = ?
+      WHERE id = ? AND order_id = ?
+    `).run(data.newUnitPrice, newFinalPrice, data.itemId, data.orderId)
+
+    // Recalcular total de la orden
+    const remainingItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(data.orderId) as OrderItem[]
+    const newTotal = remainingItems.reduce((sum, it) => sum + it.final_price, 0)
+    db.prepare('UPDATE orders SET total_amount = ? WHERE id = ?').run(newTotal, data.orderId)
+
+    // Registrar en auditoría
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    try {
+      db.prepare(`
+        INSERT INTO order_audit_logs (id, order_id, action, reason, user_id, user_name, details)
+        VALUES (?, ?, 'CHANGE_ITEM_PRICE', ?, ?, ?, ?)
+      `).run(
+        logId,
+        data.orderId,
+        trimmedReason,
+        data.userId || null,
+        data.userName || 'Personal',
+        JSON.stringify({
+          itemId: itemToUpdate.id,
+          productName: itemToUpdate.product_name,
+          quantity: itemToUpdate.quantity,
+          oldUnitPrice: itemToUpdate.unit_price,
+          newUnitPrice: data.newUnitPrice,
+          oldFinalPrice: itemToUpdate.final_price,
+          newFinalPrice,
+          priceDifference: newFinalPrice - itemToUpdate.final_price,
+          authorizedBy: data.authorizedBy || data.userName || 'Administrador',
+          previousTotal: order.total_amount,
+          newTotal
+        })
+      )
+    } catch (e) {
+      console.error('[OrderRepository] Error al registrar log de auditoría:', e)
+    }
+
+    return this.getOrderById(data.orderId)!
+  }
+
+  /**
+   * Actualiza modificadores / sabores de un ítem en una orden activa
+   */
+  static updateOrderItemModifiers(data: {
+    orderId: string
+    itemId: string
+    selectedModifiers: any[]
+    newUnitPrice?: number
+  }): Order {
+    const db = getDatabase()
+    const order = this.getOrderById(data.orderId)
+    if (!order) throw new Error('Orden no encontrada')
+    if (order.status !== 'Abierta') throw new Error('Solo se pueden editar variantes de pedidos activos')
+
+    const item = order.items?.find(i => i.id === data.itemId)
+    if (!item) throw new Error('Ítem no encontrado')
+
+    const modifiersDetail = JSON.stringify(data.selectedModifiers || [])
+    const unitPrice = data.newUnitPrice !== undefined ? data.newUnitPrice : item.unit_price
+    const finalPrice = unitPrice * item.quantity
+
+    db.prepare(`
+      UPDATE order_items 
+      SET modifiers_detail = ?, unit_price = ?, final_price = ?
+      WHERE id = ? AND order_id = ?
+    `).run(modifiersDetail, unitPrice, finalPrice, data.itemId, data.orderId)
+
+    // Recalcular total de la orden
+    const remainingItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(data.orderId) as OrderItem[]
+    const newTotal = remainingItems.reduce((sum, it) => sum + it.final_price, 0)
+    db.prepare('UPDATE orders SET total_amount = ? WHERE id = ?').run(newTotal, data.orderId)
+
+    return this.getOrderById(data.orderId)!
+  }
 }
 

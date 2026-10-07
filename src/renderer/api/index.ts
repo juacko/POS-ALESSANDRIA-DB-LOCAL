@@ -37,6 +37,20 @@ export const api: POSAPI = {
     }
     return res.json()
   },
+  verifyAdminPin: async (data: { pin: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.verifyAdminPin(plainData)
+    const res = await fetch('/api/users/verify-admin-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'PIN incorrecto o sin privilegios de Administrador')
+    }
+    return res.json()
+  },
   createUser: async (data) => {
     const plainData = toPlain(data)
     if (window.api) return window.api.createUser(plainData)
@@ -367,6 +381,48 @@ export const api: POSAPI = {
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.error || 'Error al anular el pedido')
+    }
+    return res.json()
+  },
+  deleteOrderItem: async (data: { orderId: string; itemId: string; reason: string; userId?: string; userName?: string; authorizedBy?: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.deleteOrderItem(plainData)
+    const res = await fetch('/api/orders/delete-item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al eliminar el producto')
+    }
+    return res.json()
+  },
+  updateOrderItemPrice: async (data: { orderId: string; itemId: string; newUnitPrice: number; reason: string; userId?: string; userName?: string; authorizedBy?: string }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.updateOrderItemPrice(plainData)
+    const res = await fetch('/api/orders/update-item-price', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al actualizar el precio')
+    }
+    return res.json()
+  },
+  updateOrderItemModifiers: async (data: { orderId: string; itemId: string; selectedModifiers: any[]; newUnitPrice?: number }) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.updateOrderItemModifiers(plainData)
+    const res = await fetch('/api/orders/update-item-modifiers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al actualizar los modificadores')
     }
     return res.json()
   },

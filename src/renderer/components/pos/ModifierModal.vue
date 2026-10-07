@@ -1,9 +1,9 @@
 <template>
   <Modal
     :is-open="posStore.isModifierModalOpen"
-    :title="`Opciones para ${posStore.selectedProductForModifiers?.name || ''}`"
+    :title="posStore.editingCartItemIndex !== null ? `Editar Opciones de ${posStore.selectedProductForModifiers?.name || ''}` : `Opciones para ${posStore.selectedProductForModifiers?.name || ''}`"
     max-width="lg"
-    @close="posStore.isModifierModalOpen = false"
+    @close="handleClose"
   >
     <template #icon>
       <SlidersHorizontal class="w-5 h-5 text-indigo-600" />
@@ -57,7 +57,7 @@
 
     <template #footer>
       <button
-        @click="posStore.isModifierModalOpen = false"
+        @click="handleClose"
         class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors"
       >
         Cancelar
@@ -66,7 +66,7 @@
         @click="confirmAddWithModifiers"
         class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all"
       >
-        Agregar a la Orden
+        {{ posStore.editingCartItemIndex !== null ? 'Actualizar Opciones' : 'Agregar a la Orden' }}
       </button>
     </template>
   </Modal>
@@ -78,6 +78,7 @@ import { usePosStore } from '@/stores/posStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { ModifierGroup, ModifierOption } from '@shared/types/product'
 import { SelectedModifier } from '@shared/types/order'
+import { api } from '@/api'
 import Modal from '@/components/common/Modal.vue'
 import { SlidersHorizontal } from 'lucide-vue-next'
 
@@ -87,40 +88,50 @@ const selectedModifiers = ref<SelectedModifier[]>([])
 
 watch(() => posStore.isModifierModalOpen, (isOpen) => {
   if (isOpen) {
-    selectedModifiers.value = []
-    if (posStore.selectedProductForModifiers?.modifier_groups) {
-      for (const group of posStore.selectedProductForModifiers.modifier_groups) {
-        if (!group.modifiers || group.modifiers.length === 0) continue
+    if (posStore.editingCartItemIndex !== null && posStore.initialModifiersForEdit.length > 0) {
+      selectedModifiers.value = [...posStore.initialModifiersForEdit]
+    } else {
+      selectedModifiers.value = []
+      if (posStore.selectedProductForModifiers?.modifier_groups) {
+        for (const group of posStore.selectedProductForModifiers.modifier_groups) {
+          if (!group.modifiers || group.modifiers.length === 0) continue
 
-        if (group.selection_mode === 'single') {
-          const defaultMod = group.modifiers.find(m => m.is_default === 1) || group.modifiers[0]
-          if (defaultMod) {
-            selectedModifiers.value.push({
-              group_id: group.id,
-              group_name: group.name,
-              modifier_id: defaultMod.id,
-              name: defaultMod.name,
-              price_adjustment: defaultMod.price_adjustment
-            })
-          }
-        } else {
-          // Para selecciones múltiples, preseleccionar opciones marcadas con pin default
-          const defaultMods = group.modifiers.filter(m => m.is_default === 1)
-          const limit = group.selection_limit > 0 ? group.selection_limit : defaultMods.length
-          for (const defMod of defaultMods.slice(0, limit)) {
-            selectedModifiers.value.push({
-              group_id: group.id,
-              group_name: group.name,
-              modifier_id: defMod.id,
-              name: defMod.name,
-              price_adjustment: defMod.price_adjustment
-            })
+          if (group.selection_mode === 'single') {
+            const defaultMod = group.modifiers.find(m => m.is_default === 1) || group.modifiers[0]
+            if (defaultMod) {
+              selectedModifiers.value.push({
+                group_id: group.id,
+                group_name: group.name,
+                modifier_id: defaultMod.id,
+                name: defaultMod.name,
+                price_adjustment: defaultMod.price_adjustment
+              })
+            }
+          } else {
+            // Para selecciones múltiples, preseleccionar opciones marcadas con pin default
+            const defaultMods = group.modifiers.filter(m => m.is_default === 1)
+            const limit = group.selection_limit > 0 ? group.selection_limit : defaultMods.length
+            for (const defMod of defaultMods.slice(0, limit)) {
+              selectedModifiers.value.push({
+                group_id: group.id,
+                group_name: group.name,
+                modifier_id: defMod.id,
+                name: defMod.name,
+                price_adjustment: defMod.price_adjustment
+              })
+            }
           }
         }
       }
     }
   }
 })
+
+function handleClose() {
+  posStore.isModifierModalOpen = false
+  posStore.editingCartItemIndex = null
+  posStore.initialModifiersForEdit = []
+}
 
 function isModifierSelected(groupId: string, modId: string): boolean {
   return selectedModifiers.value.some(m => m.group_id === groupId && m.modifier_id === modId)
@@ -160,10 +171,45 @@ function toggleModifier(group: ModifierGroup, mod: ModifierOption) {
   }
 }
 
-function confirmAddWithModifiers() {
-  if (posStore.selectedProductForModifiers) {
-    posStore.addProductToCart(posStore.selectedProductForModifiers, selectedModifiers.value, true)
+async function confirmAddWithModifiers() {
+  const prod = posStore.selectedProductForModifiers
+  if (!prod) {
+    handleClose()
+    return
   }
-  posStore.isModifierModalOpen = false
+
+  if (posStore.editingCartItemIndex !== null) {
+    const idx = posStore.editingCartItemIndex
+    const item = posStore.cartItems[idx]
+    if (item) {
+      // Recalcular precio unitario y final
+      const modTotal = selectedModifiers.value.reduce((sum, m) => sum + m.price_adjustment, 0)
+      const newUnitPrice = prod.base_price + modTotal
+      
+      item.selected_modifiers = [...selectedModifiers.value]
+      item.modifiers_detail = JSON.stringify(selectedModifiers.value)
+      item.unit_price = newUnitPrice
+      item.final_price = newUnitPrice * item.quantity
+
+      // Si este item ya está guardado en una orden activa en DB, persistir cambio
+      if (posStore.currentOrder && item.id) {
+        try {
+          await api.updateOrderItemModifiers({
+            orderId: posStore.currentOrder.id,
+            itemId: item.id,
+            selectedModifiers: selectedModifiers.value,
+            newUnitPrice
+          })
+          notificationStore.success('Opciones actualizadas', `Se actualizaron las opciones de ${item.product_name}.`)
+        } catch (err: any) {
+          notificationStore.error('Error al guardar opciones', err.message || 'No se pudo actualizar en el servidor')
+        }
+      }
+    }
+  } else {
+    posStore.addProductToCart(prod, selectedModifiers.value, true)
+  }
+
+  handleClose()
 }
 </script>

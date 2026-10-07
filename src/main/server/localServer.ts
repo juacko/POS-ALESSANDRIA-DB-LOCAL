@@ -370,6 +370,33 @@ export function startLocalServer() {
           return
         }
 
+        if (pathname === '/api/orders/delete-item' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.deleteOrderItem(data)
+          notifySync('tables')
+          notifySync('orders')
+          res.end(JSON.stringify(order))
+          return
+        }
+
+        if (pathname === '/api/orders/update-item-price' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.updateOrderItemPrice(data)
+          notifySync('tables')
+          notifySync('orders')
+          res.end(JSON.stringify(order))
+          return
+        }
+
+        if (pathname === '/api/orders/update-item-modifiers' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const order = OrderRepository.updateOrderItemModifiers(data)
+          notifySync('tables')
+          notifySync('orders')
+          res.end(JSON.stringify(order))
+          return
+        }
+
         if (pathname === '/api/cashier/active-session' && req.method === 'GET') {
           const session = CashierRepository.getActiveSession()
           res.end(JSON.stringify(session))
@@ -433,6 +460,26 @@ export function startLocalServer() {
             return
           }
           res.end(JSON.stringify(user))
+          return
+        }
+
+        if (pathname === '/api/users/verify-admin-pin' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const db = getDatabase()
+          const pin = data.pin?.trim()
+          if (!pin) {
+            res.writeHead(400)
+            res.end(JSON.stringify({ error: 'El PIN es requerido' }))
+            return
+          }
+          const admin = db.prepare("SELECT id, username, full_name, role, active FROM users WHERE password_hash = ? AND role = 'Administrador' AND active = 1")
+            .get(pin)
+          if (!admin) {
+            res.writeHead(403)
+            res.end(JSON.stringify({ error: 'PIN incorrecto o el usuario no cuenta con privilegios de Administrador.' }))
+            return
+          }
+          res.end(JSON.stringify(admin))
           return
         }
 

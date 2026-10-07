@@ -16,6 +16,15 @@ export const usePosStore = defineStore('pos', () => {
   const selectedProductForModifiers = ref<Product | null>(null)
   const isModifierModalOpen = ref<boolean>(false)
   const isMobileCartOpen = ref<boolean>(false)
+  const editingCartItemIndex = ref<number | null>(null)
+  const initialModifiersForEdit = ref<SelectedModifier[]>([])
+
+  function openEditModifiers(index: number, product: Product, existingMods: SelectedModifier[] = []) {
+    editingCartItemIndex.value = index
+    selectedProductForModifiers.value = product
+    initialModifiersForEdit.value = [...existingMods]
+    isModifierModalOpen.value = true
+  }
 
   function openMobileCart() {
     isMobileCartOpen.value = true
@@ -208,6 +217,9 @@ export const usePosStore = defineStore('pos', () => {
     selectedProductForModifiers,
     isModifierModalOpen,
     isMobileCartOpen,
+    editingCartItemIndex,
+    initialModifiersForEdit,
+    openEditModifiers,
     openMobileCart,
     closeMobileCart,
     subtotal,
