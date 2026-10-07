@@ -151,6 +151,30 @@ export function startLocalServer() {
           return
         }
 
+        if (pathname === '/api/categories/create' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const cat = ProductRepository.createCategory(data)
+          notifySync('products')
+          res.end(JSON.stringify(cat))
+          return
+        }
+
+        if (pathname === '/api/categories/update' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const cat = ProductRepository.updateCategory(data.id, data)
+          notifySync('products')
+          res.end(JSON.stringify(cat))
+          return
+        }
+
+        if (pathname === '/api/categories/delete' && req.method === 'POST') {
+          const data = await parseJsonBody(req)
+          const success = ProductRepository.deleteCategory(data.id)
+          notifySync('products')
+          res.end(JSON.stringify({ success }))
+          return
+        }
+
         if (pathname === '/api/products' && req.method === 'GET') {
           const products = ProductRepository.getProducts(true)
           res.end(JSON.stringify(products))

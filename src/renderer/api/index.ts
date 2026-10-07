@@ -53,11 +53,54 @@ export const api: POSAPI = {
     throw new Error('Solo permitido desde la aplicación principal')
   },
 
-  // Productos
+  // Productos y Categorías
   getCategories: async () => {
     if (window.api) return window.api.getCategories()
     const res = await fetch('/api/categories')
     return res.json()
+  },
+  createCategory: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.createCategory(plainData)
+    const res = await fetch('/api/categories/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al crear categoría')
+    }
+    return res.json()
+  },
+  updateCategory: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.updateCategory(plainData)
+    const res = await fetch('/api/categories/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al actualizar categoría')
+    }
+    return res.json()
+  },
+  deleteCategory: async (data) => {
+    const plainData = toPlain(data)
+    if (window.api) return window.api.deleteCategory(plainData)
+    const res = await fetch('/api/categories/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plainData)
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al eliminar categoría')
+    }
+    const json = await res.json()
+    return json.success
   },
   getProducts: async (activeOnly) => {
     if (window.api) return window.api.getProducts(activeOnly)

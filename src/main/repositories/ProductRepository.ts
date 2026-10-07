@@ -5,7 +5,82 @@ import { randomUUID } from 'crypto'
 export class ProductRepository {
   static getCategories(): Category[] {
     const db = getDatabase()
-    return db.prepare('SELECT * FROM categories ORDER BY display_order ASC, name ASC').all() as Category[]
+    return db.prepare(`
+      SELECT c.*, COUNT(p.id) as product_count
+      FROM categories c
+      LEFT JOIN products p ON c.id = p.category_id AND p.active = 1
+      GROUP BY c.id
+      ORDER BY c.display_order ASC, c.name ASC
+    `).all() as Category[]
+  }
+
+  static getCategoryById(id: string): Category | null {
+    const db = getDatabase()
+    const cat = db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as Category | undefined
+    return cat || null
+  }
+
+  static createCategory(data: { name: string; display_order?: number }): Category {
+    const db = getDatabase()
+    const trimmedName = data.name?.trim()
+    if (!trimmedName) throw new Error('El nombre de la categoría es obligatorio')
+
+    const existing = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?)').get(trimmedName) as { id: string } | undefined
+    if (existing) {
+      throw new Error(`Ya existe una categoría llamada "${trimmedName}"`)
+    }
+
+    let order = data.display_order
+    if (order === undefined || order === null) {
+      const max = db.prepare('SELECT MAX(display_order) as max_order FROM categories').get() as { max_order: number | null }
+      order = (max?.max_order ?? -1) + 1
+    }
+
+    const id = `cat-${Date.now()}`
+    db.prepare(`
+      INSERT INTO categories (id, name, display_order)
+      VALUES (?, ?, ?)
+    `).run(id, trimmedName, order)
+
+    return this.getCategoryById(id)!
+  }
+
+  static updateCategory(id: string, data: { name: string; display_order?: number }): Category {
+    const db = getDatabase()
+    const current = this.getCategoryById(id)
+    if (!current) throw new Error('Categoría no encontrada')
+
+    const trimmedName = data.name?.trim()
+    if (!trimmedName) throw new Error('El nombre de la categoría es obligatorio')
+
+    const duplicate = db.prepare('SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND id != ?').get(trimmedName, id) as { id: string } | undefined
+    if (duplicate) {
+      throw new Error(`Ya existe otra categoría llamada "${trimmedName}"`)
+    }
+
+    const order = data.display_order !== undefined && data.display_order !== null ? Number(data.display_order) : current.display_order
+
+    db.prepare(`
+      UPDATE categories
+      SET name = ?, display_order = ?
+      WHERE id = ?
+    `).run(trimmedName, order, id)
+
+    return this.getCategoryById(id)!
+  }
+
+  static deleteCategory(id: string): boolean {
+    const db = getDatabase()
+    const current = this.getCategoryById(id)
+    if (!current) throw new Error('Categoría no encontrada')
+
+    const countRow = db.prepare('SELECT COUNT(*) as count FROM products WHERE category_id = ?').get(id) as { count: number }
+    if (countRow.count > 0) {
+      throw new Error(`No se puede eliminar la categoría "${current.name}" porque tiene ${countRow.count} producto(s) asignado(s). Reasigna o elimina los productos primero.`)
+    }
+
+    const res = db.prepare('DELETE FROM categories WHERE id = ?').run(id)
+    return res.changes > 0
   }
 
   static getProducts(activeOnly = true): Product[] {

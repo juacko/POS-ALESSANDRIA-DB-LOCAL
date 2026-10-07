@@ -44,7 +44,14 @@
               : 'text-slate-500 hover:text-slate-800'"
           >
             <Receipt class="w-3.5 h-3.5 text-slate-400" />
-            <span>Historial Completo</span>
+            <span>Ventas e Historial</span>
+            <span
+              v-if="historyOrders.length > 0"
+              class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-black"
+              :class="activeTab === 'history' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'"
+            >
+              {{ countByStatus.total }}
+            </span>
           </button>
         </div>
 
@@ -291,10 +298,92 @@
       </div>
     </div>
 
-    <!-- ==================== PESTAÑA 2: HISTORIAL COMPLETO DE ÓRDENES ==================== -->
+    <!-- ==================== PESTAÑA 2: HISTORIAL Y VENTAS DE ÓRDENES ==================== -->
     <div v-else class="flex-1 flex flex-col overflow-hidden">
-      <!-- Filtros Automáticos y Búsqueda -->
-      <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+      <!-- Barra Superior: Filtro de Ámbito (Caja Actual / Del Día / Todo) y Resumen de Ventas -->
+      <div class="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b border-slate-200/90 px-4 sm:px-6 py-2.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
+        <!-- Selector de Período / Caja -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <Filter class="w-3.5 h-3.5 text-indigo-600" />
+            <span>Ver Ventas:</span>
+          </span>
+
+          <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200/80 shadow-xs">
+            <button
+              @click="selectedScopeFilter = 'current_session'"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+              :class="selectedScopeFilter === 'current_session'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
+            >
+              <Store class="w-3.5 h-3.5" />
+              <span>Caja Actual</span>
+              <span
+                v-if="cashierStore.activeSession"
+                class="w-2 h-2 rounded-full"
+                :class="selectedScopeFilter === 'current_session' ? 'bg-emerald-300' : 'bg-emerald-500 animate-pulse'"
+                title="Caja Abierta Activa"
+              ></span>
+              <span
+                v-else
+                class="text-[10px] px-1 py-0.2 rounded font-normal"
+                :class="selectedScopeFilter === 'current_session' ? 'bg-indigo-700 text-indigo-200' : 'bg-slate-100 text-slate-400'"
+              >
+                (Cerrada)
+              </span>
+            </button>
+
+            <button
+              @click="selectedScopeFilter = 'today'"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+              :class="selectedScopeFilter === 'today'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
+            >
+              <Calendar class="w-3.5 h-3.5" />
+              <span>Del Día (Hoy)</span>
+            </button>
+
+            <button
+              @click="selectedScopeFilter = 'all'"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+              :class="selectedScopeFilter === 'all'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'"
+            >
+              <Clock class="w-3.5 h-3.5" />
+              <span>Todo el Historial</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Resumen de Ventas del Ámbito Seleccionado -->
+        <div class="flex items-center gap-2 sm:gap-3 text-xs font-bold flex-wrap">
+          <!-- Total facturado en el filtro -->
+          <div class="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1.5 rounded-xl shadow-xs">
+            <span class="text-[10px] font-semibold uppercase text-emerald-600">Total Ventas:</span>
+            <span class="text-sm font-black font-heading text-emerald-700">S/. {{ scopeSummary.totalSales.toFixed(2) }}</span>
+            <span class="text-[10px] text-emerald-600 font-semibold">({{ scopeSummary.paidCount }} pagadas)</span>
+          </div>
+
+          <!-- Desglose por método de pago si hay ventas -->
+          <div v-if="scopeSummary.totalSales > 0" class="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-600">
+            <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-xs">
+              💵 Efectivo: <strong class="text-emerald-700 font-mono">S/. {{ scopeSummary.cashSales.toFixed(2) }}</strong>
+            </span>
+            <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-xs">
+              💳 Tarjeta: <strong class="text-indigo-700 font-mono">S/. {{ scopeSummary.cardSales.toFixed(2) }}</strong>
+            </span>
+            <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-xs">
+              📱 Yape/Plin: <strong class="text-purple-700 font-mono">S/. {{ scopeSummary.yapeSales.toFixed(2) }}</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros Secundarios: Estado, Canal y Búsqueda -->
+      <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <!-- Chips de Estado -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           <button
@@ -306,20 +395,7 @@
           >
             <span>Todos</span>
             <span class="px-1.5 py-0.2 rounded-md text-[10px]" :class="selectedStatusFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700'">
-              {{ historyOrders.length }}
-            </span>
-          </button>
-
-          <button
-            @click="selectedStatusFilter = 'Abierta'"
-            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5"
-            :class="selectedStatusFilter === 'Abierta'
-              ? 'bg-amber-500 text-white shadow-sm'
-              : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'"
-          >
-            <span>🟡 Abiertas</span>
-            <span class="px-1.5 py-0.2 rounded-md text-[10px]" :class="selectedStatusFilter === 'Abierta' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'">
-              {{ countByStatus.open }}
+              {{ countByStatus.total }}
             </span>
           </button>
 
@@ -333,6 +409,19 @@
             <span>🟢 Pagadas</span>
             <span class="px-1.5 py-0.2 rounded-md text-[10px]" :class="selectedStatusFilter === 'Pagada' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'">
               {{ countByStatus.paid }}
+            </span>
+          </button>
+
+          <button
+            @click="selectedStatusFilter = 'Abierta'"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5"
+            :class="selectedStatusFilter === 'Abierta'
+              ? 'bg-amber-500 text-white shadow-sm'
+              : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'"
+          >
+            <span>🟡 Abiertas</span>
+            <span class="px-1.5 py-0.2 rounded-md text-[10px]" :class="selectedStatusFilter === 'Abierta' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'">
+              {{ countByStatus.open }}
             </span>
           </button>
 
@@ -382,8 +471,49 @@
           Cargando historial de órdenes...
         </div>
 
-        <div v-else-if="filteredHistoryOrders.length === 0" class="text-center py-10 text-slate-400 text-sm">
-          No se encontraron órdenes con los filtros seleccionados.
+        <!-- Alerta si se eligió Caja Actual pero no hay sesión abierta -->
+        <div
+          v-else-if="selectedScopeFilter === 'current_session' && !cashierStore.activeSession"
+          class="bg-amber-50 border border-amber-200 rounded-3xl p-6 sm:p-8 text-center max-w-md mx-auto my-8 space-y-3 shadow-sm"
+        >
+          <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+            <Store class="w-6 h-6" />
+          </div>
+          <h4 class="text-sm font-bold text-slate-800 font-heading">No Hay Sesión de Caja Abierta</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Actualmente no hay una caja registradora activa. Puedes ver todas las ventas del día de hoy o abrir una nueva sesión en Caja.
+          </p>
+          <div class="flex items-center justify-center gap-2 pt-1 flex-wrap">
+            <button
+              @click="selectedScopeFilter = 'today'"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
+            >
+              Ver Ventas de Hoy
+            </button>
+            <button
+              @click="router.push({ name: 'cashier' })"
+              class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95"
+            >
+              Ir a Control de Caja
+            </button>
+          </div>
+        </div>
+
+        <div v-else-if="filteredHistoryOrders.length === 0" class="text-center py-12 text-slate-400 text-sm space-y-2">
+          <Receipt class="w-10 h-10 text-slate-300 mx-auto mb-2" />
+          <p class="font-bold text-slate-700">No se encontraron órdenes con estos filtros.</p>
+          <p class="text-xs text-slate-400">
+            {{ selectedScopeFilter === 'current_session'
+              ? 'No hay ventas registradas en la sesión de caja actual.'
+              : (selectedScopeFilter === 'today' ? 'No se han registrado ventas el día de hoy.' : 'No hay órdenes que coincidan con la búsqueda.') }}
+          </p>
+          <button
+            v-if="selectedScopeFilter !== 'all'"
+            @click="selectedScopeFilter = 'all'"
+            class="mt-2 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors inline-block"
+          >
+            Ver Todo el Historial
+          </button>
         </div>
 
         <div v-else class="space-y-3">
@@ -668,6 +798,7 @@ import { formatTableDisplay } from '@shared/utils/formatters'
 import { api } from '@/api'
 import { usePosStore } from '@/stores/posStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useCashierStore } from '@/stores/cashierStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import TicketDetailModal from '@/components/orders/TicketDetailModal.vue'
 import OrderReasonModal from '@/components/orders/OrderReasonModal.vue'
@@ -686,12 +817,16 @@ import {
   DollarSign,
   CreditCard,
   Smartphone,
-  Trash2
+  Trash2,
+  Store,
+  Calendar,
+  Filter
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const posStore = usePosStore()
 const authStore = useAuthStore()
+const cashierStore = useCashierStore()
 const notificationStore = useNotificationStore()
 
 const activeTab = ref<'active' | 'history'>('active')
@@ -702,7 +837,8 @@ const historyOrders = ref<Order[]>([])
 // Filtros para Activos
 const activeLocationFilter = ref<'all' | 'tables' | 'quick'>('all')
 
-// Filtros para Historial
+// Filtros para Historial y Ventas
+const selectedScopeFilter = ref<'current_session' | 'today' | 'all'>('current_session')
 const selectedStatusFilter = ref<'all' | 'Abierta' | 'Pagada' | 'Cancelada'>('all')
 const selectedLocationFilter = ref<'all' | 'tables' | 'quick'>('all')
 const searchQuery = ref('')
@@ -743,9 +879,10 @@ onUnmounted(() => {
 async function loadData() {
   isLoading.value = true
   try {
+    await cashierStore.checkActiveSession()
     const [actives, history] = await Promise.all([
       api.getActiveOrders(),
-      api.getOrdersHistory(100)
+      api.getOrdersHistory(300)
     ])
     activeOrders.value = actives || []
     historyOrders.value = history || []
@@ -754,6 +891,83 @@ async function loadData() {
   } finally {
     isLoading.value = false
   }
+}
+
+// Helper para parsear fechas de SQLite de forma segura
+function parseDateSafe(dateStr?: string | null): Date | null {
+  if (!dateStr) return null
+  const normalized = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T')
+  const d = new Date(normalized)
+  if (!isNaN(d.getTime())) return d
+  const fallback = new Date(dateStr)
+  return isNaN(fallback.getTime()) ? null : fallback
+}
+
+// Comprueba si una orden pertenece a la sesión de caja actualmente abierta
+function isOrderInCurrentSession(ord: Order): boolean {
+  if (!cashierStore.activeSession) return false
+  const activeSessionId = cashierStore.activeSession.id
+
+  // 1. Coincidencia directa por ID de sesión de caja asignado
+  if (ord.cashier_session_id && ord.cashier_session_id === activeSessionId) {
+    return true
+  }
+
+  // 2. Coincidencia por pagos registrados en esta sesión
+  if (ord.payments && ord.payments.some(p => p.session_id === activeSessionId)) {
+    return true
+  }
+
+  // 3. Si la orden fue creada o cerrada dentro del lapso de la sesión actual
+  if (cashierStore.activeSession.opening_time) {
+    const sessionOpen = parseDateSafe(cashierStore.activeSession.opening_time)
+    if (sessionOpen) {
+      const sessionOpenTime = sessionOpen.getTime()
+      if (ord.created_at) {
+        const orderCreated = parseDateSafe(ord.created_at)
+        if (orderCreated && orderCreated.getTime() >= sessionOpenTime - 60000) {
+          return true
+        }
+      }
+      if (ord.closed_at) {
+        const orderClosed = parseDateSafe(ord.closed_at)
+        if (orderClosed && orderClosed.getTime() >= sessionOpenTime - 60000) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+// Comprueba si una orden fue registrada el día de hoy
+function isOrderToday(ord: Order): boolean {
+  const dateStr = ord.created_at || ord.closed_at
+  if (!dateStr) return false
+
+  const d = parseDateSafe(dateStr)
+  if (d) {
+    const now = new Date()
+    if (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    ) {
+      return true
+    }
+    if (
+      d.getUTCFullYear() === now.getUTCFullYear() &&
+      d.getUTCMonth() === now.getUTCMonth() &&
+      d.getUTCDate() === now.getUTCDate()
+    ) {
+      return true
+    }
+  }
+
+  const todayYMD = new Date().toISOString().slice(0, 10)
+  const localYMD = new Date().toLocaleDateString('en-CA')
+  return dateStr.startsWith(todayYMD) || dateStr.startsWith(localYMD)
 }
 
 // Conteo de pedidos activos por tipo
@@ -774,17 +988,64 @@ const filteredActiveOrders = computed(() => {
   })
 })
 
-// Conteo de historial por estado
-const countByStatus = computed(() => {
-  const open = historyOrders.value.filter(o => o.status === 'Abierta').length
-  const paid = historyOrders.value.filter(o => o.status === 'Pagada').length
-  const cancelled = historyOrders.value.filter(o => o.status === 'Cancelada').length
-  return { open, paid, cancelled }
+// Órdenes del historial según el ámbito seleccionado (Caja Actual, Hoy, Todo)
+const scopedHistoryOrders = computed(() => {
+  return historyOrders.value.filter(o => {
+    if (selectedScopeFilter.value === 'current_session') {
+      return isOrderInCurrentSession(o)
+    }
+    if (selectedScopeFilter.value === 'today') {
+      return isOrderToday(o)
+    }
+    return true
+  })
 })
 
-// Filtrado de historial
+// Conteo de historial por estado según el ámbito seleccionado
+const countByStatus = computed(() => {
+  const list = scopedHistoryOrders.value
+  const open = list.filter(o => o.status === 'Abierta').length
+  const paid = list.filter(o => o.status === 'Pagada').length
+  const cancelled = list.filter(o => o.status === 'Cancelada').length
+  return { open, paid, cancelled, total: list.length }
+})
+
+// Resumen financiero de ventas para el ámbito seleccionado
+const scopeSummary = computed(() => {
+  const list = scopedHistoryOrders.value
+  const paidOrders = list.filter(o => o.status === 'Pagada')
+
+  let totalSales = 0
+  let cashSales = 0
+  let cardSales = 0
+  let yapeSales = 0
+
+  for (const ord of paidOrders) {
+    totalSales += ord.total_amount || 0
+    if (ord.payments && ord.payments.length > 0) {
+      for (const p of ord.payments) {
+        if (p.payment_method === 'Efectivo') cashSales += p.amount
+        else if (p.payment_method === 'Tarjeta') cardSales += p.amount
+        else if (p.payment_method === 'Yape/Plin') yapeSales += p.amount
+      }
+    } else {
+      cashSales += ord.total_amount || 0
+    }
+  }
+
+  return {
+    totalSales,
+    cashSales,
+    cardSales,
+    yapeSales,
+    paidCount: paidOrders.length,
+    totalCount: list.length
+  }
+})
+
+// Filtrado de historial final combinando ámbito, estado, ubicación y búsqueda
 const filteredHistoryOrders = computed(() => {
-  return historyOrders.value.filter(o => {
+  return scopedHistoryOrders.value.filter(o => {
     // Filtro de estado
     if (selectedStatusFilter.value !== 'all' && o.status !== selectedStatusFilter.value) {
       return false

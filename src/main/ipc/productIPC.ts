@@ -1,10 +1,29 @@
 import { ipcMain } from 'electron'
 import { ProductRepository } from '../repositories/ProductRepository'
 import { Product } from '@shared/types/product'
+import { notifySync } from '../events/syncBus'
 
 export function registerProductIPC() {
   ipcMain.handle('products:getCategories', () => {
     return ProductRepository.getCategories()
+  })
+
+  ipcMain.handle('products:createCategory', (_, data: { name: string; display_order?: number }) => {
+    const cat = ProductRepository.createCategory(data)
+    notifySync('products')
+    return cat
+  })
+
+  ipcMain.handle('products:updateCategory', (_, data: { id: string; name: string; display_order?: number }) => {
+    const cat = ProductRepository.updateCategory(data.id, data)
+    notifySync('products')
+    return cat
+  })
+
+  ipcMain.handle('products:deleteCategory', (_, data: { id: string }) => {
+    const success = ProductRepository.deleteCategory(data.id)
+    notifySync('products')
+    return success
   })
 
   ipcMain.handle('products:getProducts', (_, activeOnly = true) => {

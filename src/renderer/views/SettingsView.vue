@@ -10,7 +10,7 @@
         <p class="text-xs text-slate-400">Administración de catálogo, precios y equipo de trabajo</p>
       </div>
 
-      <!-- Selector de Pestañas (Catálogo vs Modificadores vs Personal) -->
+      <!-- Selector de Pestañas (Catálogo vs Categorías vs Modificadores vs Personal) -->
       <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60 self-start sm:self-auto overflow-x-auto max-w-full">
         <button
           @click="activeTab = 'catalog'"
@@ -21,6 +21,20 @@
         >
           <Package class="w-4 h-4" />
           <span>Productos</span>
+        </button>
+
+        <button
+          @click="activeTab = 'categories'"
+          class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0"
+          :class="activeTab === 'categories'
+            ? 'bg-white text-indigo-700 shadow-sm'
+            : 'text-slate-600 hover:text-slate-900'"
+        >
+          <FolderTree class="w-4 h-4" />
+          <span>Categorías</span>
+          <span class="px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-md text-[10px] font-black">
+            {{ productStore.categories.length }}
+          </span>
         </button>
 
         <button
@@ -71,6 +85,15 @@
               {{ cat.name }}
             </option>
           </select>
+
+          <button
+            @click="activeTab = 'categories'"
+            class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0"
+            title="Administrar Categorías"
+          >
+            <FolderTree class="w-3.5 h-3.5 text-indigo-600" />
+            <span class="hidden md:inline">Gestionar</span>
+          </button>
         </div>
 
         <button
@@ -142,6 +165,155 @@
                   >
                     <Pencil class="w-4 h-4" />
                   </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <!-- ==================== PESTAÑA: GESTIÓN DE CATEGORÍAS ==================== -->
+    <template v-else-if="activeTab === 'categories'">
+      <!-- Buscador y Acciones de Categorías -->
+      <div class="bg-white border-b border-slate-200/80 px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3 flex-1 max-w-md">
+          <div class="relative flex-1">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              v-model="categorySearchQuery"
+              type="text"
+              placeholder="Buscar categoría..."
+              class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-transparent rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-500 outline-none transition-all"
+            />
+          </div>
+          <span class="text-xs text-slate-400 font-semibold shrink-0">
+            {{ filteredCategories.length }} {{ filteredCategories.length === 1 ? 'categoría' : 'categorías' }}
+          </span>
+        </div>
+
+        <button
+          @click="openCreateCategoryModal"
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95"
+        >
+          <Plus class="w-4 h-4" />
+          <span>NUEVA CATEGORÍA</span>
+        </button>
+      </div>
+
+      <!-- Contenedor Principal de Categorías -->
+      <div class="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 md:pb-16 space-y-4">
+        <!-- Banner Explicativo -->
+        <div class="bg-gradient-to-r from-indigo-50/80 to-blue-50/60 p-4 rounded-2xl border border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <div class="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0 shadow-sm shadow-indigo-200">
+              <FolderTree class="w-5 h-5" />
+            </div>
+            <div>
+              <h3 class="text-xs sm:text-sm font-bold text-slate-900 font-heading">
+                Gestión de Categorías del Menú
+              </h3>
+              <p class="text-[11px] text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
+                Agrupa tus productos en familias (ej. Helados, Cafetería, Bebidas, Postres). El <strong>Orden</strong> numérico determina la secuencia de botones mostrada en la barra superior del Punto de Venta (POS).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado Vacío -->
+        <div
+          v-if="filteredCategories.length === 0"
+          class="bg-white rounded-2xl border border-slate-200 p-8 text-center"
+        >
+          <FolderTree class="w-12 h-12 text-slate-300 mx-auto mb-2" />
+          <p class="text-sm font-bold text-slate-700">No se encontraron categorías</p>
+          <p class="text-xs text-slate-400 mt-1">
+            {{ categorySearchQuery ? 'No hay resultados que coincidan con la búsqueda.' : 'Crea tu primera categoría para empezar a organizar los productos.' }}
+          </p>
+          <button
+            v-if="!categorySearchQuery"
+            @click="openCreateCategoryModal"
+            class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-1.5 transition-all"
+          >
+            <Plus class="w-4 h-4" />
+            <span>Crear Primera Categoría</span>
+          </button>
+        </div>
+
+        <!-- Tabla de Categorías -->
+        <div v-else class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase font-extrabold text-slate-400">
+                <th class="py-3 px-4 w-32">Orden POS</th>
+                <th class="py-3 px-4">Nombre de Categoría</th>
+                <th class="py-3 px-4">Productos Asignados</th>
+                <th class="py-3 px-4 text-right w-32">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-sm">
+              <tr
+                v-for="cat in filteredCategories"
+                :key="cat.id"
+                class="hover:bg-slate-50/80 transition-colors"
+              >
+                <!-- Orden POS -->
+                <td class="py-3.5 px-4 font-mono font-bold text-slate-700 text-xs">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-slate-700 font-bold">
+                    <Pin class="w-3 h-3 text-slate-400" />
+                    <span>#{{ cat.display_order ?? 0 }}</span>
+                  </span>
+                </td>
+
+                <!-- Nombre de Categoría -->
+                <td class="py-3.5 px-4 font-bold text-slate-900">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0">
+                      <FolderTree class="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span class="text-sm font-bold text-slate-900">{{ cat.name }}</span>
+                      <span class="block text-[11px] text-slate-400 font-mono">ID: {{ cat.id }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Cantidad de productos -->
+                <td class="py-3.5 px-4">
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                    :class="(cat.product_count ?? 0) > 0
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60'
+                      : 'bg-slate-100 text-slate-500 border border-slate-200/60'"
+                  >
+                    <Package class="w-3.5 h-3.5" />
+                    <span>{{ cat.product_count ?? 0 }} {{ (cat.product_count ?? 0) === 1 ? 'producto activo' : 'productos activos' }}</span>
+                  </span>
+                </td>
+
+                <!-- Acciones -->
+                <td class="py-3.5 px-4 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      @click="openEditCategoryModal(cat)"
+                      class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                      title="Editar Categoría"
+                    >
+                      <Pencil class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="handleDeleteCategory(cat)"
+                      class="p-2 rounded-xl transition-colors"
+                      :class="(cat.product_count ?? 0) > 0
+                        ? 'text-slate-300 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
+                        : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'"
+                      :title="(cat.product_count ?? 0) > 0
+                        ? 'Tiene productos asignados (ver advertencia)'
+                        : 'Eliminar Categoría'"
+                    >
+                      <Trash2 class="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -533,6 +705,15 @@
       @close="isFormModalOpen = false"
     />
 
+    <!-- Modal Formulario de Categoría -->
+    <CategoryFormModal
+      :is-open="isCategoryModalOpen"
+      :category-to-edit="categoryToEdit"
+      :suggested-order="suggestedCategoryOrder"
+      @close="isCategoryModalOpen = false"
+      @save="handleSaveCategory"
+    />
+
     <!-- Modal Formulario de Usuario -->
     <UserFormModal
       :is-open="isUserModalOpen"
@@ -576,9 +757,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { Product, ModifierGroup, ModifierOption } from '@shared/types/product'
+import { Product, Category, ModifierGroup, ModifierOption } from '@shared/types/product'
 import { User } from '@shared/types/user'
 import ProductFormModal from '@/components/products/ProductFormModal.vue'
+import CategoryFormModal from '@/components/products/CategoryFormModal.vue'
 import UserFormModal from '@/components/users/UserFormModal.vue'
 import ModifierGroupModal from '@/components/products/ModifierGroupModal.vue'
 import ModifierOptionModal from '@/components/products/ModifierOptionModal.vue'
@@ -601,7 +783,8 @@ import {
   Copy,
   Check,
   X,
-  Pin
+  Pin,
+  FolderTree
 } from 'lucide-vue-next'
 
 const productStore = useProductStore()
@@ -635,13 +818,18 @@ async function handleConfirmExecution() {
   isConfirmModalOpen.value = false
 }
 
-const activeTab = ref<'catalog' | 'modifiers' | 'users'>('catalog')
+const activeTab = ref<'catalog' | 'categories' | 'modifiers' | 'users'>('catalog')
 
 // Estado Catálogo
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const isFormModalOpen = ref(false)
 const productToEdit = ref<Product | null>(null)
+
+// Estado Categorías
+const categorySearchQuery = ref('')
+const isCategoryModalOpen = ref(false)
+const categoryToEdit = ref<Category | null>(null)
 
 // Estado Modificadores y Variantes
 const searchModifierQuery = ref('')
@@ -673,6 +861,19 @@ const filteredProducts = computed(() => {
   })
 })
 
+const suggestedCategoryOrder = computed(() => {
+  if (productStore.categories.length === 0) return 0
+  const maxOrder = Math.max(...productStore.categories.map(c => c.display_order ?? 0))
+  return maxOrder + 1
+})
+
+const filteredCategories = computed(() => {
+  const list = [...productStore.categories].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || a.name.localeCompare(b.name))
+  if (!categorySearchQuery.value.trim()) return list
+  const q = categorySearchQuery.value.toLowerCase()
+  return list.filter(c => c.name.toLowerCase().includes(q))
+})
+
 const filteredModifierGroups = computed(() => {
   return productStore.modifierGroups.filter(g => {
     if (selectedModifierMode.value !== 'all' && g.selection_mode !== selectedModifierMode.value) {
@@ -699,6 +900,59 @@ function openEditModal(product: Product) {
 async function toggleActive(product: Product) {
   const nextState = product.active === 1 ? 0 : 1
   await productStore.toggleProductActive(product.id, nextState)
+}
+
+// Métodos de Categorías
+function openCreateCategoryModal() {
+  categoryToEdit.value = null
+  isCategoryModalOpen.value = true
+}
+
+function openEditCategoryModal(category: Category) {
+  categoryToEdit.value = category
+  isCategoryModalOpen.value = true
+}
+
+async function handleSaveCategory(data: { name: string; display_order: number }) {
+  try {
+    if (categoryToEdit.value) {
+      await productStore.updateCategory(categoryToEdit.value.id, data)
+      notificationStore.success('Categoría actualizada', `Se guardaron los cambios de "${data.name}".`)
+    } else {
+      await productStore.createCategory(data)
+      notificationStore.success('Categoría creada', `Se creó la categoría "${data.name}".`)
+    }
+    isCategoryModalOpen.value = false
+  } catch (err: any) {
+    notificationStore.error('Error al guardar categoría', err.message || 'No se pudo guardar la categoría.')
+  }
+}
+
+async function handleDeleteCategory(category: Category) {
+  const prodCount = category.product_count ?? 0
+  if (prodCount > 0) {
+    openConfirm({
+      title: 'No se puede eliminar la categoría',
+      message: `La categoría "${category.name}" tiene ${prodCount} producto(s) asignado(s). Para eliminarla, primero debes reasignar o eliminar esos productos del catálogo.`,
+      type: 'warning',
+      onConfirm: async () => {}
+    })
+    return
+  }
+
+  openConfirm({
+    title: '¿Eliminar Categoría?',
+    message: `¿Estás seguro de que deseas eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
+    type: 'danger',
+    onConfirm: async () => {
+      try {
+        await productStore.deleteCategory(category.id)
+        notificationStore.success('Categoría eliminada', `Se eliminó "${category.name}".`)
+      } catch (err: any) {
+        notificationStore.error('Error al eliminar categoría', err.message || 'No se pudo eliminar la categoría.')
+      }
+    }
+  })
 }
 
 // Métodos de Modificadores y Variantes

@@ -163,10 +163,14 @@ export class OrderRepository {
       insertPayment.run(pId, orderId, sessionId, p.method, p.amount)
     }
 
-    // Marcar orden como Pagada
+    // Marcar orden como Pagada y vincular a la sesión de caja
     db.prepare(`
-      UPDATE orders SET status = 'Pagada', closed_at = CURRENT_TIMESTAMP WHERE id = ?
-    `).run(orderId)
+      UPDATE orders 
+      SET status = 'Pagada', 
+          closed_at = CURRENT_TIMESTAMP,
+          cashier_session_id = COALESCE(cashier_session_id, ?) 
+      WHERE id = ?
+    `).run(sessionId, orderId)
 
     // Si la orden pertenecía a una mesa, liberar la mesa si no hay más órdenes abiertas
     if (order.table_id) {

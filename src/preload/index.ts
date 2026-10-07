@@ -19,8 +19,11 @@ const api: POSAPI = {
   updateUser: (data) => ipcRenderer.invoke('users:update', toPlain(data)),
   toggleUserActive: (data) => ipcRenderer.invoke('users:toggleActive', toPlain(data)),
 
-  // Productos
+  // Productos y Categorías
   getCategories: () => ipcRenderer.invoke('products:getCategories'),
+  createCategory: (data) => ipcRenderer.invoke('products:createCategory', toPlain(data)),
+  updateCategory: (data) => ipcRenderer.invoke('products:updateCategory', toPlain(data)),
+  deleteCategory: (data) => ipcRenderer.invoke('products:deleteCategory', toPlain(data)),
   getProducts: (activeOnly) => ipcRenderer.invoke('products:getProducts', activeOnly),
   getModifierGroups: () => ipcRenderer.invoke('products:getModifierGroups'),
   createProduct: (data) => ipcRenderer.invoke('products:createProduct', toPlain(data)),

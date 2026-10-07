@@ -96,6 +96,25 @@ export const useProductStore = defineStore('products', () => {
     return success
   }
 
+  // Acciones de Categorías
+  async function createCategory(data: { name: string; display_order?: number }) {
+    const created = await api.createCategory(data)
+    await loadCatalog()
+    return created
+  }
+
+  async function updateCategory(id: string, data: { name: string; display_order?: number }) {
+    const updated = await api.updateCategory({ id, ...data })
+    await loadCatalog()
+    return updated
+  }
+
+  async function deleteCategory(id: string) {
+    const success = await api.deleteCategory({ id })
+    await loadCatalog()
+    return success
+  }
+
   return {
     categories,
     products,
@@ -105,6 +124,9 @@ export const useProductStore = defineStore('products', () => {
     isLoading,
     filteredProducts,
     loadCatalog,
+    createCategory,
+    updateCategory,
+    deleteCategory,
     createProduct,
     updateProduct,
     toggleProductActive,

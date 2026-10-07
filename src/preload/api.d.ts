@@ -35,8 +35,11 @@ export interface POSAPI {
   updateUser: (data: { id: string; fullName: string; role: UserRole; pin?: string }) => Promise<User>
   toggleUserActive: (data: { id: string; active: number }) => Promise<boolean>
 
-  // Productos
+  // Categorías y Productos
   getCategories: () => Promise<Category[]>
+  createCategory: (data: { name: string; display_order?: number }) => Promise<Category>
+  updateCategory: (data: { id: string; name: string; display_order?: number }) => Promise<Category>
+  deleteCategory: (data: { id: string }) => Promise<boolean>
   getProducts: (activeOnly?: boolean) => Promise<Product[]>
   getModifierGroups: () => Promise<ModifierGroup[]>
   createProduct: (data: { product: Partial<Product>; modifierGroups: (string | ProductModifierGroupConfig)[] }) => Promise<Product>
