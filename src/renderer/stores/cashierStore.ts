@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { CashierSession, CashMovement } from '@shared/types/cashier'
+import { CashierSession, CashMovement, CashierSessionTotals } from '@shared/types/cashier'
 import { useAuthStore } from './authStore'
 import { api } from '@/api'
 
 export const useCashierStore = defineStore('cashier', () => {
   const activeSession = ref<CashierSession | null>(null)
   const movementsList = ref<CashMovement[]>([])
-  const sessionTotals = ref<any>(null)
+  const sessionTotals = ref<CashierSessionTotals | null>(null)
   const isCashModalOpen = ref<boolean>(false)
   const isMovementModalOpen = ref<boolean>(false)
 
@@ -21,6 +21,13 @@ export const useCashierStore = defineStore('cashier', () => {
       }
     } catch (e) {
       console.error('Error al consultar sesión de caja', e)
+    }
+  }
+
+  async function refreshCurrentSessionTotals() {
+    if (activeSession.value) {
+      await loadSessionTotals(activeSession.value.id, activeSession.value.initial_cash)
+      await loadMovements(activeSession.value.id)
     }
   }
 
@@ -74,6 +81,7 @@ export const useCashierStore = defineStore('cashier', () => {
     isCashModalOpen,
     isMovementModalOpen,
     checkActiveSession,
+    refreshCurrentSessionTotals,
     openSession,
     closeSession,
     addMovement

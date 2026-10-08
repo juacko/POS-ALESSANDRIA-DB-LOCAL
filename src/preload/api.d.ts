@@ -1,6 +1,6 @@
 import { Product, Category, ModifierGroup, ModifierOption, ProductModifierGroupConfig } from '@shared/types/product'
 import { Table } from '@shared/types/table'
-import { CashierSession, CashMovement } from '@shared/types/cashier'
+import { CashierSession, CashMovement, CashierSessionTotals } from '@shared/types/cashier'
 import { Order, OrderItem } from '@shared/types/order'
 import { User, UserRole } from '@shared/types/user'
 import {
@@ -66,7 +66,7 @@ export interface POSAPI {
   closeCashierSession: (data: { sessionId: string; actualCash: number; notes?: string }) => Promise<CashierSession>
   addCashMovement: (data: { sessionId: string; type: 'Ingreso' | 'Egreso'; amount: number; description: string }) => Promise<CashMovement>
   getCashMovements: (sessionId: string) => Promise<CashMovement[]>
-  getCashierSessionTotals: (data: { sessionId: string; initialCash: number }) => Promise<any>
+  getCashierSessionTotals: (data: { sessionId: string; initialCash: number }) => Promise<CashierSessionTotals>
 
   // Órdenes y Venta
   getOrderById: (id: string) => Promise<Order | null>

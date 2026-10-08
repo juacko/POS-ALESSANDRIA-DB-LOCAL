@@ -32,3 +32,26 @@ export interface Payment {
   amount: number
   timestamp: string
 }
+
+export interface CashierSessionTotals {
+  initialCash: number
+  cashPayments: number
+  cardPayments: number
+  yapePayments: number
+  cashPaymentsCount: number
+  cardPaymentsCount: number
+  yapePaymentsCount: number
+  manualIncomes: number
+  manualExpenses: number
+  expected_cash: number
+  totalSales: number
+  orderCount: number
+  averageTicket: number
+  dineInSales: number
+  takeoutSales: number
+  dineInOrders: number
+  takeoutOrders: number
+  openOrdersCount: number
+  openOrdersTotal: number
+}
+
